@@ -1,0 +1,20 @@
+{
+  "seq_len": 501,
+  "n_layers": 28,
+  "n_heads": 4,
+  "head_dim": 128,
+  "budget": 125,
+  "compaction_ratio": 4.008,
+  "avg_output_mse": 0.00021852058764082471,
+  "avg_output_cosine": 0.9987461417913437,
+  "per_layer_time_s": 0.014859290999993391,
+  "estimated_full_model_time_s": 0.41606014799981494,
+  "avg_nnls_time_ms": 0.9914897499356812,
+  "avg_ols_time_ms": 0.8478230000719122,
+  "head_entropies": [
+    1.6753178381557425,
+    0.3444590445320294,
+    2.474679173990435,
+    1.1219786684001392
+  ]
+}

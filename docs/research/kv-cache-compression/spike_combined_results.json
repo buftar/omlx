@@ -1,0 +1,16 @@
+{
+  "seq_len": 501,
+  "n_layers": 28,
+  "n_heads": 4,
+  "head_dim": 128,
+  "am_budget": 125,
+  "am_ratio": 4.008,
+  "kvtc_ratio": 3.926259930676973,
+  "combined_ratio": 15.736449802153308,
+  "original_bytes_per_layer": 1026048,
+  "compressed_bytes_per_layer": 65202,
+  "am_time_s": 0.22014337500013426,
+  "kvtc_time_s": 0.04157583300002443,
+  "output_mse": 0.6143245100975037,
+  "output_cosine": 0.7198182344436646
+}

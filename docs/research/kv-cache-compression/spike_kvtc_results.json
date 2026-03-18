@@ -1,0 +1,14 @@
+{
+  "seq_len": 501,
+  "n_layers": 28,
+  "n_heads": 4,
+  "head_dim": 128,
+  "original_bytes": 28729344,
+  "compressed_bytes": 4218219,
+  "compression_ratio": 6.81077582742859,
+  "pca_calibration_time_s": 4.064638792000096,
+  "pipeline_time_s": 2.09516450000001,
+  "avg_key_cos_sim": 0.9813375962632043,
+  "avg_val_cos_sim": 0.9841164286647525,
+  "decompression_latency_ms": 1.4712919996782148
+}
