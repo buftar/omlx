@@ -108,13 +108,57 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated during roadmap creation) | | |
+| MATH-01 | Phase 1 | Pending |
+| MATH-02 | Phase 1 | Pending |
+| MATH-03 | Phase 1 | Pending |
+| AM-01 | Phase 2 | Pending |
+| AM-02 | Phase 2 | Pending |
+| AM-03 | Phase 2 | Pending |
+| AM-04 | Phase 2 | Pending |
+| AM-05 | Phase 2 | Pending |
+| AM-06 | Phase 2 | Pending |
+| AM-07 | Phase 2 | Pending |
+| AM-08 | Phase 2 | Pending |
+| KVTC-01 | Phase 3 | Pending |
+| KVTC-02 | Phase 3 | Pending |
+| KVTC-03 | Phase 3 | Pending |
+| KVTC-04 | Phase 3 | Pending |
+| KVTC-05 | Phase 3 | Pending |
+| KVTC-06 | Phase 3 | Pending |
+| KVTC-07 | Phase 3 | Pending |
+| CAL-01 | Phase 4 | Pending |
+| CAL-02 | Phase 4 | Pending |
+| CAL-03 | Phase 4 | Pending |
+| CAL-04 | Phase 4 | Pending |
+| CAL-05 | Phase 4 | Pending |
+| PIPE-01 | Phase 5 | Pending |
+| PIPE-02 | Phase 5 | Pending |
+| PIPE-03 | Phase 5 | Pending |
+| PIPE-04 | Phase 5 | Pending |
+| PIPE-05 | Phase 5 | Pending |
+| PIPE-06 | Phase 6 | Pending |
+| PIPE-07 | Phase 6 | Pending |
+| PIPE-08 | Phase 6 | Pending |
+| PIPE-09 | Phase 6 | Pending |
+| PIPE-10 | Phase 6 | Pending |
+| VAL-01 | Phase 7 | Pending |
+| VAL-02 | Phase 7 | Pending |
+| VAL-03 | Phase 7 | Pending |
+| VAL-04 | Phase 7 | Pending |
+| VAL-05 | Phase 7 | Pending |
+| VAL-06 | Phase 7 | Pending |
+| VAL-07 | Phase 7 | Pending |
+| VAL-08 | Phase 7 | Pending |
+| OBS-01 | Phase 8 | Pending |
+| OBS-02 | Phase 8 | Pending |
+| OBS-03 | Phase 8 | Pending |
+| OBS-04 | Phase 8 | Pending |
 
 **Coverage:**
-- v1 requirements: 39 total
-- Mapped to phases: 0
-- Unmapped: 39 ⚠️
+- v1 requirements: 45 total
+- Mapped to phases: 45
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-18 after initial definition*
+*Last updated: 2026-03-18 after roadmap creation*
