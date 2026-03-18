@@ -62,7 +62,10 @@ class TestSvdF32:
         a = mx.array([[3.0, 0.0], [0.0, 2.0], [0.0, 0.0]], dtype=mx.float32)
         U, S, Vt = svd_f32(a)
         _mlx_eval(U, S, Vt)
-        reconstructed = U @ mx.diag(S) @ Vt
+        # MLX SVD returns full U (m x m), thin S (k,), thin Vt (k x n)
+        # Reconstruction: U[:, :k] @ diag(S) @ Vt
+        k = S.shape[0]
+        reconstructed = U[:, :k] @ mx.diag(S) @ Vt
         _mlx_eval(reconstructed)
         np.testing.assert_allclose(
             np.array(reconstructed), np.array(a), atol=1e-4

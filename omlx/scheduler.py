@@ -30,7 +30,7 @@ from mlx_lm.generate import (
     _right_pad_prompts,
     generation_stream,
 )
-from mlx_lm.sample_utils import make_sampler, make_logits_processors, make_presence_penalty
+from mlx_lm.sample_utils import make_sampler, make_logits_processors
 
 from pathlib import Path
 
