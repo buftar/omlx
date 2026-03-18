@@ -9,9 +9,9 @@ Requirements for the KV cache compression milestone. Each maps to roadmap phases
 
 ### Linalg Foundation
 
-- [ ] **MATH-01**: Linalg safety layer wraps MLX ops with automatic float32 cast and CPU stream routing
-- [ ] **MATH-02**: scipy NNLS wrapper for β-fitting with numpy↔MLX bridge
-- [ ] **MATH-03**: OLS value-fitting via `mx.linalg.pinv` with correct stream/dtype handling
+- [x] **MATH-01**: Linalg safety layer wraps MLX ops with automatic float32 cast and CPU stream routing
+- [x] **MATH-02**: scipy NNLS wrapper for β-fitting with numpy↔MLX bridge
+- [x] **MATH-03**: OLS value-fitting via `mx.linalg.pinv` with correct stream/dtype handling
 
 ### AM Compaction
 
@@ -108,9 +108,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MATH-01 | Phase 1 | Pending |
-| MATH-02 | Phase 1 | Pending |
-| MATH-03 | Phase 1 | Pending |
+| MATH-01 | Phase 1 | Complete |
+| MATH-02 | Phase 1 | Complete |
+| MATH-03 | Phase 1 | Complete |
 | AM-01 | Phase 2 | Pending |
 | AM-02 | Phase 2 | Pending |
 | AM-03 | Phase 2 | Pending |

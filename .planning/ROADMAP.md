@@ -12,7 +12,7 @@ This roadmap builds a two-stage KV cache compression pipeline for omlx on Apple 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Linalg Foundation** - Float32-safe MLX linalg helpers and scipy NNLS bridge that all compressors depend on
+- [x] **Phase 1: Linalg Foundation** - Float32-safe MLX linalg helpers and scipy NNLS bridge that all compressors depend on (completed 2026-03-18)
 - [ ] **Phase 2: AM Compaction** - Stateless attention-matching token compactor with NNLS/OLS fitting and non-uniform head budgets
 - [ ] **Phase 3: kvtc Compression** - PCA-based byte-level storage compressor with DP quantization, zstd entropy coding, and exemption logic
 - [ ] **Phase 4: PCA Calibration CLI** - `omlx calibrate-kv <model>` command that generates PCA bundle required for kvtc
@@ -130,7 +130,7 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Linalg Foundation | 0/1 | Planned | - |
+| 1. Linalg Foundation | 1/1 | Complete   | 2026-03-18 |
 | 2. AM Compaction | 0/TBD | Not started | - |
 | 3. kvtc Compression | 0/TBD | Not started | - |
 | 4. PCA Calibration CLI | 0/TBD | Not started | - |

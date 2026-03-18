@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-03-18T04:35:14.763Z"
+stopped_at: Completed 01-linalg-foundation/01-01-PLAN.md
+last_updated: "2026-03-18T11:22:49.828Z"
 last_activity: 2026-03-18 — Roadmap created; requirements mapped to 8 phases
 progress:
   total_phases: 8
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
   percent: 0
 ---
 
@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 01-linalg-foundation P01 | 14 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,9 @@ Recent decisions affecting current work:
 - [Research]: Float16 linalg input produces silent NaN in MLX 0.31.x — linalg helpers are Phase 1 blocker for everything else
 - [Research]: DP quantization and attention sink exemptions are correctness requirements, not quality enhancements — must be in Phase 3, not added later
 - [Research]: Phase 6 integration needs targeted source inspection of omlx async write queue internals before writing integration design
+- [Phase 01-linalg-foundation]: omlx/compression/__init__.py is intentionally empty — no re-exports, callers import from linalg_utils directly
+- [Phase 01-linalg-foundation]: All linalg wrappers always return float32 — callers own their dtype decisions
+- [Phase 01-linalg-foundation]: stream=mx.cpu used on svd/pinv/qr — GPU stream raises at materialization time in MLX 0.31.x
 
 ### Pending Todos
 
@@ -76,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T04:35:14.762Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-linalg-foundation/01-CONTEXT.md
+Last session: 2026-03-18T11:22:49.826Z
+Stopped at: Completed 01-linalg-foundation/01-01-PLAN.md
+Resume file: None
