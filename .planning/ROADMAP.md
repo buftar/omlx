@@ -32,7 +32,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. All linalg helper calls route to `stream=mx.cpu` — no bare `mx.linalg.*` calls exist outside the helper module
   3. The scipy NNLS wrapper accepts an MLX tensor, calls `scipy.optimize.nnls` via numpy bridge, and returns an MLX tensor
   4. A CI lint gate confirms no bare `mx.linalg.svd` or `mx.linalg.pinv` calls exist outside `omlx/compression/linalg_utils.py`
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 01-01-PLAN.md — Create omlx/compression package with float32-safe linalg wrappers and scipy NNLS bridge
 
 ### Phase 2: AM Compaction
 **Goal**: A stateless `AMCompactor` produces compacted KV caches that preserve attention output quality at the configured token ratio
@@ -127,7 +130,7 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Linalg Foundation | 0/TBD | Not started | - |
+| 1. Linalg Foundation | 0/1 | Planned | - |
 | 2. AM Compaction | 0/TBD | Not started | - |
 | 3. kvtc Compression | 0/TBD | Not started | - |
 | 4. PCA Calibration CLI | 0/TBD | Not started | - |
