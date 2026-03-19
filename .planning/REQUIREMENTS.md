@@ -15,14 +15,14 @@ Requirements for the KV cache compression milestone. Each maps to roadmap phases
 
 ### AM Compaction
 
-- [ ] **AM-01**: User's KV cache is compacted to a target ratio using HighestAttnKeys selection
-- [ ] **AM-02**: β bias vector is fitted via NNLS to preserve attention mass after compaction
-- [ ] **AM-03**: Compacted value matrix Cᵥ is fitted via OLS to preserve attention outputs
-- [ ] **AM-04**: Compacted cache retains logical sequence length T with physical size t for correct RoPE phases
-- [ ] **AM-05**: Non-uniform head budgets are precomputed per model based on per-head entropy sensitivity
-- [ ] **AM-06**: Head budget schedule is stored alongside model and reused across compactions
-- [ ] **AM-07**: Reference queries are generated via repeat-prefill strategy for compaction optimization
-- [ ] **AM-08**: β values are box-constrained ∈ [−3, 3] for HighestAttnKeys; keys with β < −7 are pruned for OMP
+- [x] **AM-01**: User's KV cache is compacted to a target ratio using HighestAttnKeys selection
+- [x] **AM-02**: β bias vector is fitted via NNLS to preserve attention mass after compaction
+- [x] **AM-03**: Compacted value matrix Cᵥ is fitted via OLS to preserve attention outputs
+- [x] **AM-04**: Compacted cache retains logical sequence length T with physical size t for correct RoPE phases
+- [x] **AM-05**: Non-uniform head budgets are precomputed per model based on per-head entropy sensitivity
+- [x] **AM-06**: Head budget schedule is stored alongside model and reused across compactions
+- [x] **AM-07**: Reference queries are generated via repeat-prefill strategy for compaction optimization
+- [x] **AM-08**: β values are box-constrained ∈ [−3, 3] for HighestAttnKeys; keys with β < −7 are pruned for OMP
 
 ### kvtc Compression
 
@@ -111,14 +111,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MATH-01 | Phase 1 | Complete |
 | MATH-02 | Phase 1 | Complete |
 | MATH-03 | Phase 1 | Complete |
-| AM-01 | Phase 2 | Pending |
-| AM-02 | Phase 2 | Pending |
-| AM-03 | Phase 2 | Pending |
-| AM-04 | Phase 2 | Pending |
-| AM-05 | Phase 2 | Pending |
-| AM-06 | Phase 2 | Pending |
-| AM-07 | Phase 2 | Pending |
-| AM-08 | Phase 2 | Pending |
+| AM-01 | Phase 2 | Complete |
+| AM-02 | Phase 2 | Complete |
+| AM-03 | Phase 2 | Complete |
+| AM-04 | Phase 2 | Complete |
+| AM-05 | Phase 2 | Complete |
+| AM-06 | Phase 2 | Complete |
+| AM-07 | Phase 2 | Complete |
+| AM-08 | Phase 2 | Complete |
 | KVTC-01 | Phase 3 | Pending |
 | KVTC-02 | Phase 3 | Pending |
 | KVTC-03 | Phase 3 | Pending |
