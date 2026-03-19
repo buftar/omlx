@@ -62,6 +62,8 @@ dependencies = [
     # mlx-vlm from commit (b7f853a)
     "mlx-vlm @ git+https://github.com/Blaizzy/mlx-vlm@b7f853a26a0bdcb60a307b1deb01ba5be9ac9ffc",
     "Pillow>=9.0.0",
+    # KV cache compression
+    "zstandard>=0.21.0",
 ]
 
 [project.optional-dependencies]
@@ -131,6 +133,9 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow -- require a real model download (deselect with '-m not slow')",
+]
 
 [dependency-groups]
 dev = [
