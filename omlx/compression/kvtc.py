@@ -55,8 +55,9 @@ def _split_tokens(tensor, n_sink_tokens: int, sliding_window: int):
 def _calibrate_onthefly(tensor, n_components: int):
     """Compute on-the-fly PCA basis from a single KV tensor.
 
-    Uses svd_f32 (never mx.linalg.svd directly) to ensure float32 safety and
-    CPU stream routing. This is the testing/fallback path -- lower quality than
+    Uses svd_f32 from linalg_utils (direct linalg calls are forbidden outside
+    linalg_utils.py) to ensure float32 safety and CPU stream routing.
+    This is the testing/fallback path -- lower quality than
     a pre-computed calibration bundle.
 
     Args:
@@ -79,7 +80,8 @@ def _calibrate_onthefly(tensor, n_components: int):
     centered = data - mean
     _mx_materialize(centered)
 
-    # svd_f32 returns (U, S, Vt) -- NEVER call mx.linalg.svd directly
+    # svd_f32 returns (U, S, Vt). Using the linalg_utils wrapper is mandatory --
+    # callers must not call linalg operations directly outside linalg_utils.py.
     U, S, Vt = svd_f32(centered)
     _mx_materialize(U, S, Vt)
 
