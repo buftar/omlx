@@ -10,7 +10,13 @@ RoPE stripping is the caller's responsibility. Keys passed to compress() must
 already have positional encodings removed.
 """
 
+import struct
+
 import mlx.core as mx
+import numpy as np
+import zstandard as zstd
+
+from omlx.compression.linalg_utils import svd_f32
 
 # MLX lazy graph materialization alias.
 # This calls mx.eval(), which forces the MLX compute graph to execute so that
@@ -19,6 +25,164 @@ import mlx.core as mx
 # computation trigger. The alias name documents the intent and avoids confusion
 # with unrelated Python builtins.
 _mx_materialize = mx.eval
+
+
+# ---------------------------------------------------------------------------
+# Private compression primitives
+# ---------------------------------------------------------------------------
+
+
+def _split_tokens(tensor, n_sink_tokens: int, sliding_window: int):
+    """Split tensor into (sinks, body, window) regions.
+
+    Args:
+        tensor: KV tensor with shape [1, n_kv_heads, seq_len, head_dim].
+        n_sink_tokens: Number of initial tokens to exempt from compression.
+        sliding_window: Number of final tokens to exempt from compression.
+
+    Returns:
+        Tuple (sinks, body, window) where body may be zero-length if
+        seq_len <= n_sink_tokens + sliding_window.
+    """
+    seq_len = tensor.shape[2]
+    window_start = max(n_sink_tokens, seq_len - sliding_window)
+    sinks = tensor[:, :, :n_sink_tokens, :]
+    body = tensor[:, :, n_sink_tokens:window_start, :]
+    window = tensor[:, :, window_start:, :]
+    return sinks, body, window
+
+
+def _calibrate_onthefly(tensor, n_components: int):
+    """Compute on-the-fly PCA basis from a single KV tensor.
+
+    Uses svd_f32 (never mx.linalg.svd directly) to ensure float32 safety and
+    CPU stream routing. This is the testing/fallback path -- lower quality than
+    a pre-computed calibration bundle.
+
+    Args:
+        tensor: KV tensor with shape [1, n_kv_heads, seq_len, head_dim].
+        n_components: Number of PCA components to retain.
+
+    Returns:
+        Tuple (basis, mean, singular_values) where:
+            basis: mx.array shape [head_dim, n_components]
+            mean: mx.array shape [head_dim]
+            singular_values: mx.array shape [n_components]
+    """
+    # Reshape to [n_kv_heads * seq_len, head_dim], cast to float32
+    n_kv_heads = tensor.shape[1]
+    seq_len = tensor.shape[2]
+    head_dim = tensor.shape[3]
+    data = tensor.reshape(n_kv_heads * seq_len, head_dim).astype(mx.float32)
+
+    mean = mx.mean(data, axis=0)
+    centered = data - mean
+    _mx_materialize(centered)
+
+    # svd_f32 returns (U, S, Vt) -- NEVER call mx.linalg.svd directly
+    U, S, Vt = svd_f32(centered)
+    _mx_materialize(U, S, Vt)
+
+    # basis shape: [head_dim, n_components]
+    basis = Vt[:n_components].T
+    return basis, mean, S[:n_components]
+
+
+def _dp_allocate_bits(
+    singular_values,
+    bits_per_token_budget: float,
+    n_tokens: int,
+    n_components: int,
+    min_bits: int = 1,
+    max_bits: int = 8,
+) -> np.ndarray:
+    """Allocate bit widths per PCA component using a greedy DP strategy.
+
+    Components with higher singular values receive more bits within the overall
+    budget. Every component receives at least min_bits.
+
+    Args:
+        singular_values: numpy float array [n_components], largest first.
+        bits_per_token_budget: Target bits per token (e.g. 4.0).
+        n_tokens: Number of body tokens.
+        n_components: Number of PCA components.
+        min_bits: Minimum bits per component (default 1).
+        max_bits: Maximum bits per component (default 8).
+
+    Returns:
+        numpy uint8 array of length n_components with values in [min_bits, max_bits].
+    """
+    total_budget = int(bits_per_token_budget * n_tokens * n_components)
+    alloc = np.full(n_components, min_bits, dtype=np.uint8)
+    remaining = total_budget - min_bits * n_components
+
+    # Priority order: highest singular value gets extra bits first
+    priority = np.argsort(singular_values)[::-1]
+    for comp_idx in priority:
+        extra = min(int(max_bits) - int(alloc[comp_idx]), remaining)
+        if extra <= 0:
+            if remaining <= 0:
+                break
+            continue
+        alloc[comp_idx] += extra
+        remaining -= extra
+        if remaining <= 0:
+            break
+
+    return alloc
+
+
+def _lloyd_codebook(col: np.ndarray, n_bits: int) -> np.ndarray:
+    """Build a Lloyd (k-means 1D) codebook for one PCA coefficient column.
+
+    Uses percentile-based centroid initialisation followed by 3 Lloyd iterations.
+
+    Args:
+        col: numpy float array of PCA coefficients for one component.
+        n_bits: Bit width (1..8); produces 2^n_bits centroids.
+
+    Returns:
+        float64 numpy array of shape [2^n_bits] containing the centroids.
+    """
+    n_levels = 2 ** n_bits
+    percentiles = np.linspace(0, 100, n_levels + 1)
+    boundaries = np.percentile(col, percentiles)
+    centroids = (boundaries[:-1] + boundaries[1:]) / 2.0
+
+    for _ in range(3):
+        dists = np.abs(col[:, None] - centroids[None, :])
+        indices = np.argmin(dists, axis=1)
+        for k in range(n_levels):
+            mask = indices == k
+            if np.any(mask):
+                centroids[k] = col[mask].mean()
+
+    return centroids
+
+
+def _compress_zstd(data: bytes, level: int = 3) -> bytes:
+    """Compress bytes using zstandard at the specified compression level.
+
+    Args:
+        data: Raw bytes to compress.
+        level: zstd compression level (default 3).
+
+    Returns:
+        Compressed bytes.
+    """
+    return zstd.ZstdCompressor(level=level).compress(data)
+
+
+def _decompress_zstd(compressed: bytes) -> bytes:
+    """Decompress bytes produced by _compress_zstd.
+
+    Args:
+        compressed: Bytes produced by _compress_zstd.
+
+    Returns:
+        Original uncompressed bytes.
+    """
+    return zstd.ZstdDecompressor().decompress(compressed)
 
 
 class KVTCCompressor:
