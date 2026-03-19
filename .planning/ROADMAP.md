@@ -142,7 +142,7 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 |-------|----------------|--------|-----------|
 | 1. Linalg Foundation | 1/1 | Complete   | 2026-03-18 |
 | 2. AM Compaction | 3/3 | Complete   | 2026-03-19 |
-| 3. kvtc Compression | 1/3 | In Progress|  |
+| 3. kvtc Compression | 2/3 | In Progress|  |
 | 4. PCA Calibration CLI | 0/TBD | Not started | - |
 | 5. Pipeline Assembly | 0/TBD | Not started | - |
 | 6. Cache Integration | 0/TBD | Not started | - |
