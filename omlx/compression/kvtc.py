@@ -238,7 +238,160 @@ class KVTCCompressor:
         Returns:
             A self-describing bytes blob (starts with b"KVTC" magic).
         """
-        raise NotImplementedError("KVTCCompressor.compress() not yet implemented")
+        HEADER_FMT = "!4sIIII"
+        header_bytes = struct.pack(
+            HEADER_FMT,
+            b"KVTC",
+            1,
+            len(kv_cache),
+            self.n_sink_tokens,
+            self.sliding_window,
+        )
+        layer_blobs = []
+
+        for layer_idx, (keys, values) in enumerate(kv_cache):
+            sinks_k, body_k, window_k = _split_tokens(
+                keys, self.n_sink_tokens, self.sliding_window
+            )
+            sinks_v, body_v, window_v = _split_tokens(
+                values, self.n_sink_tokens, self.sliding_window
+            )
+
+            n_kv_heads = keys.shape[1]
+            seq_len = keys.shape[2]
+            head_dim = keys.shape[3]
+            body_len = body_k.shape[2]
+            window_len = window_k.shape[2]
+
+            if body_len == 0:
+                n_components = 0
+                k_basis_bytes = b""
+                k_mean_bytes = b""
+                v_basis_bytes = b""
+                v_mean_bytes = b""
+                k_alloc_bytes = b""
+                v_alloc_bytes = b""
+                k_compressed = b""
+                v_compressed = b""
+            else:
+                # Determine n_components
+                if self.pca_bundle is not None:
+                    k_basis = self.pca_bundle[layer_idx]["K_basis"]
+                    k_mean = self.pca_bundle[layer_idx]["K_mean"]
+                    k_sv = self.pca_bundle[layer_idx]["K_sv"]
+                    v_basis = self.pca_bundle[layer_idx]["V_basis"]
+                    v_mean = self.pca_bundle[layer_idx]["V_mean"]
+                    v_sv = self.pca_bundle[layer_idx]["V_sv"]
+                    n_components = k_basis.shape[1]
+                else:
+                    n_components = min(64, head_dim // 2)
+                    k_basis, k_mean, k_sv = _calibrate_onthefly(body_k, n_components)
+                    v_basis, v_mean, v_sv = _calibrate_onthefly(body_v, n_components)
+
+                # PCA project body
+                _mx_materialize(body_k, body_v)
+                body_k_f32 = body_k.astype(mx.float32)
+                body_v_f32 = body_v.astype(mx.float32)
+                k_mean_f32 = k_mean.astype(mx.float32)
+                v_mean_f32 = v_mean.astype(mx.float32)
+                k_basis_f32 = k_basis.astype(mx.float32)
+                v_basis_f32 = v_basis.astype(mx.float32)
+                k_coeffs = (body_k_f32 - k_mean_f32) @ k_basis_f32
+                v_coeffs = (body_v_f32 - v_mean_f32) @ v_basis_f32
+                _mx_materialize(k_coeffs, v_coeffs)
+                k_coeffs_np = np.array(k_coeffs).reshape(-1, n_components)
+                v_coeffs_np = np.array(v_coeffs).reshape(-1, n_components)
+
+                # DP bit allocation
+                if self.pca_bundle is not None:
+                    k_bit_alloc = self.pca_bundle[layer_idx]["k_bit_alloc"]
+                    v_bit_alloc = self.pca_bundle[layer_idx]["v_bit_alloc"]
+                else:
+                    k_sv_np = np.array(k_sv)
+                    v_sv_np = np.array(v_sv)
+                    k_bit_alloc = _dp_allocate_bits(
+                        k_sv_np, self.bits_per_token, n_kv_heads * body_len, n_components
+                    )
+                    v_bit_alloc = _dp_allocate_bits(
+                        v_sv_np, self.bits_per_token, n_kv_heads * body_len, n_components
+                    )
+
+                # Quantize K via Lloyd + pack to bytes
+                k_index_bytes_list = []
+                k_codebook_bytes_list = []
+                for c in range(n_components):
+                    col = k_coeffs_np[:, c]
+                    n_bits = int(k_bit_alloc[c])
+                    centroids = _lloyd_codebook(col, n_bits)
+                    dists = np.abs(col[:, None] - centroids[None, :])
+                    indices = np.argmin(dists, axis=1).astype(np.uint8)
+                    k_index_bytes_list.append(indices.tobytes())
+                    k_codebook_bytes_list.append(centroids.astype(np.float32).tobytes())
+                k_index_stream = b"".join(k_index_bytes_list)
+                k_codebook_stream = b"".join(k_codebook_bytes_list)
+                k_raw = k_index_stream + k_codebook_stream
+                k_compressed = _compress_zstd(k_raw)
+
+                # Quantize V via Lloyd + pack to bytes
+                v_index_bytes_list = []
+                v_codebook_bytes_list = []
+                for c in range(n_components):
+                    col = v_coeffs_np[:, c]
+                    n_bits = int(v_bit_alloc[c])
+                    centroids = _lloyd_codebook(col, n_bits)
+                    dists = np.abs(col[:, None] - centroids[None, :])
+                    indices = np.argmin(dists, axis=1).astype(np.uint8)
+                    v_index_bytes_list.append(indices.tobytes())
+                    v_codebook_bytes_list.append(centroids.astype(np.float32).tobytes())
+                v_index_stream = b"".join(v_index_bytes_list)
+                v_codebook_stream = b"".join(v_codebook_bytes_list)
+                v_raw = v_index_stream + v_codebook_stream
+                v_compressed = _compress_zstd(v_raw)
+
+                # Serialize basis and mean (float32, for self-describing blob)
+                _mx_materialize(k_basis, k_mean, v_basis, v_mean)
+                k_basis_bytes = np.array(k_basis).astype(np.float32).tobytes()
+                k_mean_bytes = np.array(k_mean.reshape(-1)).astype(np.float32).tobytes()
+                v_basis_bytes = np.array(v_basis).astype(np.float32).tobytes()
+                v_mean_bytes = np.array(v_mean.reshape(-1)).astype(np.float32).tobytes()
+                k_alloc_bytes = k_bit_alloc.astype(np.uint8).tobytes()
+                v_alloc_bytes = v_bit_alloc.astype(np.uint8).tobytes()
+
+            # Serialize sinks and window verbatim
+            _mx_materialize(sinks_k, window_k, sinks_v, window_v)
+            sinks_k_bytes = np.array(sinks_k.astype(mx.float16)).tobytes()
+            sinks_v_bytes = np.array(sinks_v.astype(mx.float16)).tobytes()
+            window_k_bytes = np.array(window_k.astype(mx.float16)).tobytes()
+            window_v_bytes = np.array(window_v.astype(mx.float16)).tobytes()
+
+            # Pack per-layer section
+            layer_header = struct.pack(
+                "!IIIII", layer_idx, n_kv_heads, seq_len, head_dim, n_components
+            )
+            window_len_packed = struct.pack("!I", window_len)
+            k_comp_len_packed = struct.pack("!I", len(k_compressed))
+            v_comp_len_packed = struct.pack("!I", len(v_compressed))
+            layer_blob = (
+                layer_header
+                + sinks_k_bytes
+                + sinks_v_bytes
+                + window_len_packed
+                + window_k_bytes
+                + window_v_bytes
+                + k_comp_len_packed
+                + k_compressed
+                + v_comp_len_packed
+                + v_compressed
+                + k_alloc_bytes
+                + v_alloc_bytes
+                + k_basis_bytes
+                + k_mean_bytes
+                + v_basis_bytes
+                + v_mean_bytes
+            )
+            layer_blobs.append(layer_blob)
+
+        return header_bytes + b"".join(layer_blobs)
 
     def decompress(self, blob: bytes) -> list[tuple[mx.array, mx.array]]:
         """Decompress a blob produced by compress() back to KV cache tensors.
