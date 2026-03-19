@@ -81,7 +81,12 @@ Plans:
   3. Head entropy sensitivity curves are present in the calibration bundle and load correctly into `AMCompactor` for non-uniform budget computation
   4. Calibration completes in under 10 minutes for Qwen 2.5 7B on M3 Max
   5. Running calibration twice on the same model produces a deterministic or near-deterministic bundle (randomized SVD seed is fixed)
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Wave 0: test scaffold (tests/test_calibrator.py RED), calibrator.py stub, cli.py calibrate-kv wiring
+- [ ] 04-02-PLAN.md — Wave 1: implement calibrator primitives (strip_rope, compute_pca_basis, bundle I/O, Procrustes) — unit tests GREEN for CAL-02/03/04
+- [ ] 04-03-PLAN.md — Wave 2: implement run_calibration() full pipeline, TestCLIDispatch GREEN, human verify
 
 ### Phase 5: Pipeline Assembly
 **Goal**: AM and kvtc are composed into a single compress/decompress pipeline with correct trigger semantics and a verified end-to-end round-trip
