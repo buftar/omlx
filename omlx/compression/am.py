@@ -92,9 +92,9 @@ class AMCompactor:
         seq_len = first_keys.shape[2]
         n_heads = first_keys.shape[1]
 
-        # Uniform budget per head (Plan 02 uses uniform budgets;
-        # Plan 03 upgrades to non-uniform when head_entropy is not None)
-        budget_per_head = max(self.n_sink_tokens, math.ceil(seq_len / ratio))
+        # Compute per-head budgets (non-uniform when head_entropy is provided,
+        # uniform otherwise). Uses entropy proportions stored at __init__ time.
+        head_budgets = self._compute_head_budgets(seq_len, ratio, n_heads)
 
         compacted_layers = []
         for _layer_idx, (keys, values) in enumerate(kv_cache):
@@ -106,11 +106,29 @@ class AMCompactor:
                 v_h = values[:, h : h + 1]   # [1, 1, seq_len, head_dim]
                 q_h = queries[:, h : h + 1] if queries is not None else None
 
-                k_c, v_c = self._compact_head(k_h, v_h, q_h, budget_per_head)
+                k_c, v_c = self._compact_head(k_h, v_h, q_h, head_budgets[h])
                 compacted_keys_per_head.append(k_c)
                 compacted_vals_per_head.append(v_c)
 
-            # Concatenate heads back: [1, n_heads, budget, head_dim]
+            # Concatenate heads back: [1, n_heads, max_budget, head_dim].
+            # When per-head budgets are non-uniform (entropy-proportional), pad
+            # shorter heads to the maximum budget with zeros so shapes are
+            # compatible for concatenation along the head axis.
+            max_budget = max(t.shape[2] for t in compacted_keys_per_head)
+            if not all(t.shape[2] == max_budget for t in compacted_keys_per_head):
+                head_dim = compacted_keys_per_head[0].shape[3]
+                padded_k, padded_v = [], []
+                for k_h, v_h in zip(compacted_keys_per_head, compacted_vals_per_head):
+                    pad_len = max_budget - k_h.shape[2]
+                    if pad_len > 0:
+                        k_pad = mx.zeros([1, 1, pad_len, head_dim], dtype=k_h.dtype)
+                        v_pad = mx.zeros([1, 1, pad_len, head_dim], dtype=v_h.dtype)
+                        k_h = mx.concatenate([k_h, k_pad], axis=2)
+                        v_h = mx.concatenate([v_h, v_pad], axis=2)
+                    padded_k.append(k_h)
+                    padded_v.append(v_h)
+                compacted_keys_per_head = padded_k
+                compacted_vals_per_head = padded_v
             k_layer = mx.concatenate(compacted_keys_per_head, axis=1)
             v_layer = mx.concatenate(compacted_vals_per_head, axis=1)
             compacted_layers.append((k_layer, v_layer))
@@ -120,6 +138,50 @@ class AMCompactor:
             logical_seq_len=seq_len,
             diagnostics=None,
         )
+
+    def _compute_head_budgets(
+        self, seq_len: int, ratio: float, n_heads: int
+    ) -> list[int]:
+        """Compute per-head token budgets for compaction.
+
+        When head_entropy is None, returns a uniform list of length n_heads
+        where every entry equals max(n_sink_tokens, floor(seq_len / ratio)).
+
+        When head_entropy is provided, budgets are proportional to entropy values
+        so that higher-entropy heads receive more tokens. The sum of all budgets
+        equals n_heads * max(n_sink_tokens, floor(seq_len / ratio)), with any
+        rounding error added to the highest-entropy head.
+
+        Uses self._head_entropy stored at __init__ time; does not recompute
+        entropy from data on each call.
+
+        Args:
+            seq_len: Sequence length of the KV cache being compacted.
+            ratio: Compaction ratio.
+            n_heads: Number of attention heads.
+
+        Returns:
+            list[int] of length n_heads, each entry >= n_sink_tokens.
+        """
+        uniform_budget = max(self.n_sink_tokens, int(seq_len / ratio))
+
+        if self._head_entropy is None:
+            return [uniform_budget] * n_heads
+
+        ent = np.array(self._head_entropy, dtype=np.float64)
+        if ent.sum() == 0:
+            return [uniform_budget] * n_heads
+
+        proportions = ent / ent.sum()
+        total_budget = n_heads * uniform_budget
+        budgets = np.maximum(
+            self.n_sink_tokens,
+            np.round(proportions * total_budget).astype(int),
+        )
+        diff = total_budget - int(budgets.sum())
+        if diff != 0:
+            budgets[np.argmax(ent)] += diff
+        return budgets.tolist()
 
     def _compact_head(
         self,
