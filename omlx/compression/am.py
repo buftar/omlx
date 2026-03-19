@@ -329,16 +329,21 @@ def generate_reference_queries(
     n_queries: int = 64,
     method: str = "sample",
 ) -> mx.array:
-    """Generate reference queries for HighestAttnKeys attention matching.
+    """Generate reference queries for use with AMCompactor.compact().
 
     Args:
-        keys: Key cache tensor [1, n_heads, seq_len, head_dim].
+        keys: KV cache keys tensor, shape [1, n_heads, seq_len, head_dim].
         n_queries: Number of reference queries to generate.
-        method: "sample" -- sample n_queries positions from existing keys (default).
-                "random" -- Gaussian scaled to key std.
+        method: Strategy for query generation.
+            "sample" -- randomly sample n_queries positions from existing keys
+                        (production default).
+            "random" -- Gaussian noise scaled to key std (useful for ablation).
+            Note: passing the result as queries= to compact() is the production
+            path. queries=None in compact() is a testing-only uniform fallback
+            with no cosine similarity guarantee.
 
     Returns:
-        Reference queries mx.array [1, n_heads, n_queries, head_dim].
+        mx.array of shape [1, n_heads, n_queries, head_dim].
     """
     seq_len = keys.shape[2]
 
