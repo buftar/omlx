@@ -227,6 +227,51 @@ class TestCompactedCacheShape:
 class TestHeadBudgets:
     """AM-05: Per-head token budgets are computed correctly."""
 
+    def test_compute_head_budgets_uniform(self):
+        """_compute_head_budgets returns uniform list when head_entropy is None."""
+        compactor = AMCompactor(head_entropy=None, n_sink_tokens=4)
+        budgets = compactor._compute_head_budgets(seq_len=64, ratio=4.0, n_heads=4)
+        assert isinstance(budgets, list)
+        assert len(budgets) == 4
+        expected = max(4, int(64 / 4.0))
+        assert all(b == expected for b in budgets), (
+            f"Expected uniform budgets of {expected}, got {budgets}"
+        )
+
+    def test_compute_head_budgets_entropy_proportional(self):
+        """_compute_head_budgets produces higher budgets for higher-entropy heads."""
+        head_entropy = [1.68, 0.34, 2.47, 1.12]
+        compactor = AMCompactor(head_entropy=head_entropy, n_sink_tokens=4)
+        budgets = compactor._compute_head_budgets(seq_len=501, ratio=4.0, n_heads=4)
+        assert isinstance(budgets, list)
+        assert len(budgets) == 4
+        # head 2 (entropy=2.47) must have at least as many tokens as head 1 (entropy=0.34)
+        assert budgets[2] >= budgets[1], (
+            f"Head 2 (entropy=2.47) should have budget >= head 1 (entropy=0.34), "
+            f"got {budgets}"
+        )
+
+    def test_compute_head_budgets_min_sinks(self):
+        """No budget returned by _compute_head_budgets may fall below n_sink_tokens."""
+        head_entropy = [1.68, 0.34, 2.47, 1.12]
+        n_sinks = 4
+        compactor = AMCompactor(head_entropy=head_entropy, n_sink_tokens=n_sinks)
+        budgets = compactor._compute_head_budgets(seq_len=64, ratio=4.0, n_heads=4)
+        assert all(b >= n_sinks for b in budgets), (
+            f"All budgets must be >= n_sink_tokens={n_sinks}, got {budgets}"
+        )
+
+    def test_compute_head_budgets_sum_correct(self):
+        """Sum of per-head budgets equals n_heads * floor(T/ratio) (rounding-corrected)."""
+        head_entropy = [1.68, 0.34, 2.47, 1.12]
+        compactor = AMCompactor(head_entropy=head_entropy, n_sink_tokens=1)
+        seq_len, ratio, n_heads = 100, 4.0, 4
+        budgets = compactor._compute_head_budgets(seq_len=seq_len, ratio=ratio, n_heads=n_heads)
+        expected_total = n_heads * max(1, int(seq_len / ratio))
+        assert sum(budgets) == expected_total, (
+            f"Expected sum={expected_total}, got sum={sum(budgets)} with budgets={budgets}"
+        )
+
     def test_uniform_budgets_correct(self, small_kv_cache):
         """With head_entropy=None, every head gets budget = max(n_sinks, floor(T/ratio))."""
         seq_len = 64
