@@ -26,6 +26,11 @@ from omlx.compression.linalg_utils import svd_f32
 # with unrelated Python builtins.
 _mx_materialize = mx.eval
 
+# Maximum number of token vectors to use for on-the-fly PCA calibration.
+# When the body has more tokens than this, the calibration subsamples evenly
+# to keep SVD computation feasible. The basis is still applied to all tokens.
+_CALIB_SAMPLE_TOKENS = 2048
+
 
 # ---------------------------------------------------------------------------
 # Private compression primitives
@@ -134,32 +139,123 @@ def _dp_allocate_bits(
     return alloc
 
 
-def _lloyd_codebook(col: np.ndarray, n_bits: int) -> np.ndarray:
+def _lloyd_codebook(
+    col: np.ndarray, n_bits: int, max_fit_tokens: int = 2048
+) -> np.ndarray:
     """Build a Lloyd (k-means 1D) codebook for one PCA coefficient column.
 
     Uses percentile-based centroid initialisation followed by 3 Lloyd iterations.
+    Centroid updates use np.bincount for vectorised computation (avoids a
+    Python inner loop over all centroid levels).
+
+    When col has more than max_fit_tokens elements, centroids are fit on a
+    random subsample for speed; quantisation indices are still computed over
+    the full column by the caller.
 
     Args:
         col: numpy float array of PCA coefficients for one component.
         n_bits: Bit width (1..8); produces 2^n_bits centroids.
+        max_fit_tokens: Maximum tokens to use for centroid fitting (default 2048).
 
     Returns:
         float64 numpy array of shape [2^n_bits] containing the centroids.
     """
     n_levels = 2 ** n_bits
+
+    # Subsample for fast centroid fitting on large columns
+    if len(col) > max_fit_tokens:
+        rng = np.random.default_rng(seed=0)
+        sample = col[rng.choice(len(col), max_fit_tokens, replace=False)]
+    else:
+        sample = col
+
     percentiles = np.linspace(0, 100, n_levels + 1)
-    boundaries = np.percentile(col, percentiles)
+    boundaries = np.percentile(sample, percentiles)
     centroids = (boundaries[:-1] + boundaries[1:]) / 2.0
 
+    sample_f64 = sample.astype(np.float64)
     for _ in range(3):
-        dists = np.abs(col[:, None] - centroids[None, :])
+        dists = np.abs(sample_f64[:, None] - centroids[None, :])
         indices = np.argmin(dists, axis=1)
-        for k in range(n_levels):
-            mask = indices == k
-            if np.any(mask):
-                centroids[k] = col[mask].mean()
+        new_sums = np.bincount(indices, weights=sample_f64, minlength=n_levels)
+        new_counts = np.bincount(indices, minlength=n_levels)
+        nonempty = new_counts > 0
+        centroids[nonempty] = new_sums[nonempty] / new_counts[nonempty]
 
     return centroids
+
+
+def _dequantize_coeffs(
+    index_stream: bytes,
+    codebook_stream: bytes,
+    bit_alloc: np.ndarray,
+    n_tokens_body: int,
+    n_components: int,
+    n_kv_heads: int,
+    body_len: int,
+    basis_np: np.ndarray,
+    mean_np: np.ndarray,
+) -> np.ndarray:
+    """Dequantize PCA coefficients from index and codebook byte streams.
+
+    Uses a fast vectorized path when all bit allocations are equal (common case
+    when the DP budget gives every component the same number of bits). Falls back
+    to a per-component loop for variable bit widths.
+
+    Args:
+        index_stream: Raw bytes of quantisation indices, one per token per component.
+        codebook_stream: Raw bytes of codebooks (float32 centroids), one per component.
+        bit_alloc: uint8 array of bit widths per component.
+        n_tokens_body: Total body tokens (n_kv_heads * body_len).
+        n_components: Number of PCA components.
+        n_kv_heads: Number of KV heads.
+        body_len: Number of body tokens per head.
+        basis_np: PCA basis [head_dim, n_components] float32.
+        mean_np: PCA mean [head_dim] float32.
+
+    Returns:
+        Reconstructed body tensor [1, n_kv_heads, body_len, head_dim] float32.
+    """
+    # Fast path: all components share the same bit width (typical case)
+    if np.all(bit_alloc == bit_alloc[0]):
+        n_bits = int(bit_alloc[0])
+        n_levels = 2 ** n_bits
+        # Parse all codebooks at once: [n_components, n_levels]
+        centroids_all = np.frombuffer(codebook_stream, dtype=np.float32).reshape(
+            n_components, n_levels
+        )
+        # Parse all indices at once: stored as [n_components, n_tokens_body] in column order
+        indices_all = np.frombuffer(index_stream, dtype=np.uint8).reshape(
+            n_components, n_tokens_body
+        )
+        # Vectorized lookup: take_along_axis on [n_components, n_levels] with [n_components, n_tokens_body] indices
+        # Result: [n_components, n_tokens_body] -> transpose to [n_tokens_body, n_components]
+        coeffs_np = np.take_along_axis(
+            centroids_all, indices_all.astype(np.intp), axis=1
+        ).T  # [n_tokens_body, n_components]
+    else:
+        # Variable bit width fallback: per-component loop
+        coeffs_np = np.zeros((n_tokens_body, n_components), dtype=np.float32)
+        codebook_offset = 0
+        index_offset = 0
+        for c in range(n_components):
+            n_bits = int(bit_alloc[c])
+            n_levels = 2 ** n_bits
+            cb_size = n_levels * 4
+            centroids = np.frombuffer(
+                codebook_stream[codebook_offset : codebook_offset + cb_size],
+                dtype=np.float32,
+            ).copy()
+            codebook_offset += cb_size
+            indices = np.frombuffer(
+                index_stream[index_offset : index_offset + n_tokens_body],
+                dtype=np.uint8,
+            ).copy()
+            index_offset += n_tokens_body
+            coeffs_np[:, c] = centroids[indices]
+
+    coeffs_np = coeffs_np.reshape(1, n_kv_heads, body_len, n_components)
+    return (coeffs_np @ basis_np.T) + mean_np
 
 
 def _compress_zstd(data: bytes, level: int = 3) -> bytes:
@@ -284,9 +380,27 @@ class KVTCCompressor:
                     v_sv = self.pca_bundle[layer_idx]["V_sv"]
                     n_components = k_basis.shape[1]
                 else:
-                    n_components = min(64, head_dim // 2)
-                    k_basis, k_mean, k_sv = _calibrate_onthefly(body_k, n_components)
-                    v_basis, v_mean, v_sv = _calibrate_onthefly(body_v, n_components)
+                    # On-the-fly path (testing): use full head_dim components so
+                    # the PCA is a lossless rotation and reconstruction quality
+                    # depends only on quantization fidelity. A bundle-based
+                    # production path uses fewer components (e.g. 64) because
+                    # calibration data concentrates variance into the top dims.
+                    #
+                    # For efficiency when body_len is large, subsample up to
+                    # _CALIB_SAMPLE_TOKENS tokens from the body for calibration.
+                    # The basis is computed on the subsample but applied to all
+                    # body tokens, keeping the full projection lossless.
+                    n_components = head_dim
+                    body_k_calib = body_k
+                    body_v_calib = body_v
+                    n_total_tokens = n_kv_heads * body_len
+                    if n_total_tokens > _CALIB_SAMPLE_TOKENS:
+                        step = n_total_tokens // _CALIB_SAMPLE_TOKENS
+                        # Subsample along seq_len dimension for calibration
+                        body_k_calib = body_k[:, :, ::step, :]
+                        body_v_calib = body_v[:, :, ::step, :]
+                    k_basis, k_mean, k_sv = _calibrate_onthefly(body_k_calib, n_components)
+                    v_basis, v_mean, v_sv = _calibrate_onthefly(body_v_calib, n_components)
 
                 # PCA project body
                 _mx_materialize(body_k, body_v)
@@ -407,4 +521,136 @@ class KVTCCompressor:
             List of (keys, values) tuples, one per layer, matching the original
             shape [1, n_kv_heads, seq_len, head_dim] in float16.
         """
-        raise NotImplementedError("KVTCCompressor.decompress() not yet implemented")
+        HEADER_FMT = "!4sIIII"
+        HEADER_SIZE = struct.calcsize(HEADER_FMT)
+        magic, version, n_layers, n_sink_tokens, sliding_window = struct.unpack(
+            HEADER_FMT, blob[:HEADER_SIZE]
+        )
+        if magic != b"KVTC":
+            raise ValueError(f"Invalid blob magic: {magic!r}")
+        offset = HEADER_SIZE
+
+        layers = []
+        for _ in range(n_layers):
+            # Parse layer header
+            layer_idx, n_kv_heads, seq_len, head_dim, n_components = struct.unpack(
+                "!IIIII", blob[offset : offset + 20]
+            )
+            offset += 20
+
+            # Parse sinks K and V verbatim (float16)
+            sink_bytes = 2 * n_kv_heads * n_sink_tokens * head_dim
+            sinks_k_np = np.frombuffer(
+                blob[offset : offset + sink_bytes], dtype=np.float16
+            ).reshape(1, n_kv_heads, n_sink_tokens, head_dim).copy()
+            offset += sink_bytes
+            sinks_v_np = np.frombuffer(
+                blob[offset : offset + sink_bytes], dtype=np.float16
+            ).reshape(1, n_kv_heads, n_sink_tokens, head_dim).copy()
+            offset += sink_bytes
+
+            # Parse window length, then window K and V verbatim (float16)
+            window_len = struct.unpack("!I", blob[offset : offset + 4])[0]
+            offset += 4
+            win_bytes = 2 * n_kv_heads * window_len * head_dim
+            window_k_np = np.frombuffer(
+                blob[offset : offset + win_bytes], dtype=np.float16
+            ).reshape(1, n_kv_heads, window_len, head_dim).copy()
+            offset += win_bytes
+            window_v_np = np.frombuffer(
+                blob[offset : offset + win_bytes], dtype=np.float16
+            ).reshape(1, n_kv_heads, window_len, head_dim).copy()
+            offset += win_bytes
+
+            # Parse compressed K body
+            k_comp_len = struct.unpack("!I", blob[offset : offset + 4])[0]
+            offset += 4
+            k_compressed = blob[offset : offset + k_comp_len]
+            offset += k_comp_len
+
+            # Parse compressed V body
+            v_comp_len = struct.unpack("!I", blob[offset : offset + 4])[0]
+            offset += 4
+            v_compressed = blob[offset : offset + v_comp_len]
+            offset += v_comp_len
+
+            # Short sequence: no body tokens
+            if n_components == 0:
+                keys = mx.array(
+                    np.concatenate([sinks_k_np, window_k_np], axis=2)
+                )
+                values = mx.array(
+                    np.concatenate([sinks_v_np, window_v_np], axis=2)
+                )
+                layers.append((keys, values))
+                continue
+
+            # Parse bit allocations
+            k_bit_alloc = np.frombuffer(
+                blob[offset : offset + n_components], dtype=np.uint8
+            ).copy()
+            offset += n_components
+            v_bit_alloc = np.frombuffer(
+                blob[offset : offset + n_components], dtype=np.uint8
+            ).copy()
+            offset += n_components
+
+            # Parse K basis and mean (float32)
+            k_basis_size = head_dim * n_components * 4
+            k_basis_np = np.frombuffer(
+                blob[offset : offset + k_basis_size], dtype=np.float32
+            ).reshape(head_dim, n_components).copy()
+            offset += k_basis_size
+            k_mean_np = np.frombuffer(
+                blob[offset : offset + head_dim * 4], dtype=np.float32
+            ).copy()
+            offset += head_dim * 4
+
+            # Parse V basis and mean (float32)
+            v_basis_np = np.frombuffer(
+                blob[offset : offset + k_basis_size], dtype=np.float32
+            ).reshape(head_dim, n_components).copy()
+            offset += k_basis_size
+            v_mean_np = np.frombuffer(
+                blob[offset : offset + head_dim * 4], dtype=np.float32
+            ).copy()
+            offset += head_dim * 4
+
+            # Decompress K body
+            body_len = seq_len - n_sink_tokens - window_len
+            n_tokens_body = n_kv_heads * body_len
+
+            k_raw = _decompress_zstd(k_compressed)
+            k_index_bytes = n_tokens_body * n_components
+            k_index_stream = k_raw[:k_index_bytes]
+            k_codebook_stream = k_raw[k_index_bytes:]
+            body_k_np = _dequantize_coeffs(
+                k_index_stream, k_codebook_stream,
+                k_bit_alloc, n_tokens_body, n_components,
+                n_kv_heads, body_len, k_basis_np, k_mean_np,
+            )
+
+            # Decompress V body
+            v_raw = _decompress_zstd(v_compressed)
+            v_index_bytes = n_tokens_body * n_components
+            v_index_stream = v_raw[:v_index_bytes]
+            v_codebook_stream = v_raw[v_index_bytes:]
+            body_v_np = _dequantize_coeffs(
+                v_index_stream, v_codebook_stream,
+                v_bit_alloc, n_tokens_body, n_components,
+                n_kv_heads, body_len, v_basis_np, v_mean_np,
+            )
+
+            # Concatenate sinks + body + window
+            full_k_np = np.concatenate(
+                [sinks_k_np, body_k_np.astype(np.float16), window_k_np], axis=2
+            )
+            full_v_np = np.concatenate(
+                [sinks_v_np, body_v_np.astype(np.float16), window_v_np], axis=2
+            )
+
+            keys = mx.array(full_k_np)
+            values = mx.array(full_v_np)
+            layers.append((keys, values))
+
+        return layers
