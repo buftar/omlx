@@ -217,8 +217,12 @@ class AMCompactor:
         # HighestAttnKeys path
         scale = head_dim ** -0.5
 
+        # Cast to float32 to avoid float16 overflow in attention score computation
+        q_f32 = queries_h.astype(mx.float32)
+        k_f32 = keys_h.astype(mx.float32)
+
         # Compute full attention weights: [1, 1, n_queries, seq_len]
-        scores_full = (queries_h @ keys_h.transpose(0, 1, 3, 2)) * scale
+        scores_full = (q_f32 @ k_f32.transpose(0, 1, 3, 2)) * scale
         attn_full = mx.softmax(scores_full, axis=-1)
 
         # Select top-budget tokens by summed attention weight (+ sink protection)
@@ -226,9 +230,10 @@ class AMCompactor:
 
         # Extract selected keys: [1, 1, budget, head_dim]
         k_sel = keys_h[:, :, selected]
+        k_sel_f32 = k_sel.astype(mx.float32)
 
         # Compute selected attention weights: [1, 1, n_queries, budget]
-        scores_sel = (queries_h @ k_sel.transpose(0, 1, 3, 2)) * scale
+        scores_sel = (q_f32 @ k_sel_f32.transpose(0, 1, 3, 2)) * scale
         attn_sel = mx.softmax(scores_sel, axis=-1)
 
         # Compute full attention output (OLS target): [1, 1, n_queries, head_dim]
