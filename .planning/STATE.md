@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: "02-am-compaction/02-01-PLAN.md complete — Wave 0 RED scaffold"
-last_updated: "2026-03-19T02:12:00.000Z"
-last_activity: 2026-03-19 — Phase 2 Plan 01 complete (AM test scaffold, 21 tests RED)
+status: executing
+stopped_at: Completed 02-am-compaction 02-02-PLAN.md
+last_updated: "2026-03-19T02:50:38.657Z"
+last_activity: 2026-03-19 — Phase 2 Plan 01 complete (AM test scaffold, RED state confirmed)
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  total_plans: 4
+  completed_plans: 3
   percent: 0
 ---
 
@@ -51,6 +51,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 02-am-compaction P01 | 18 | 1 task | 3 files |
+| Phase 02-am-compaction P02 | 55 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,8 @@ Recent decisions affecting current work:
 - [Phase 02-am-compaction P01]: am.py stub pre-existed — tests fail with NotImplementedError (not ImportError), equivalent RED state, exit code 1
 - [Phase 02-am-compaction P01]: test_cosine_sim_above_threshold checks shape consistency only; numerical >0.98 threshold deferred to Wave 2
 - [Phase 02-am-compaction P01]: Diagnostics-gated assertions use `if result.diagnostics is not None` guard to allow implementation flexibility
+- [Phase 02-am-compaction]: Budget formula uses math.ceil(seq_len / ratio) to match canonical test expectations
+- [Phase 02-am-compaction]: generate_reference_queries implemented in Plan 02 (not Plan 03) because canonical test file imports it at module load time
 
 ### Pending Todos
 
@@ -83,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T02:12:00Z
-Stopped at: 02-am-compaction/02-01-PLAN.md complete — Wave 0 RED scaffold
-Resume file: .planning/phases/02-am-compaction/02-02-PLAN.md
+Last session: 2026-03-19T02:50:38.655Z
+Stopped at: Completed 02-am-compaction 02-02-PLAN.md
+Resume file: None
