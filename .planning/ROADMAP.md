@@ -64,7 +64,12 @@ Plans:
   3. GQA models compress KV heads (not query heads) — head count verified correct on Qwen 2.5 7B
   4. DP bit-allocation runs at compression time and produces variable bit widths per PCA component under a global budget
   5. Decompression completes in under 10ms per layer for 8K context on M3 Max (measured in unit test)
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md -- Wave 0: dependency setup (zstandard, slow marker), kvtc.py stub, test scaffold RED state
+- [ ] 03-02-PLAN.md -- Wave 1: private compression primitives (_split_tokens, _calibrate_onthefly, _dp_allocate_bits, _lloyd_codebook, zstd wrappers)
+- [ ] 03-03-PLAN.md -- Wave 2: wire compress() and decompress(), blob format, full GREEN test suite
 
 ### Phase 4: PCA Calibration CLI
 **Goal**: Users can run a one-time calibration command that generates the PCA bundle required for kvtc to function
