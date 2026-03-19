@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 1 plan
 
 Plans:
-- [ ] 01-01-PLAN.md — Create omlx/compression package with float32-safe linalg wrappers and scipy NNLS bridge
+- [x] 01-01-PLAN.md — Create omlx/compression package with float32-safe linalg wrappers and scipy NNLS bridge
 
 ### Phase 2: AM Compaction
 **Goal**: A stateless `AMCompactor` produces compacted KV caches that preserve attention output quality at the configured token ratio
@@ -47,7 +47,12 @@ Plans:
   3. Non-uniform head budgets are computed once per model and reused across compactions — later layers receive larger budgets matching spike observations (per-head entropy 0.34-2.47)
   4. Reference queries are generated via repeat-prefill strategy and used in NNLS beta-fitting
   5. Beta values are box-constrained to [-3, 3] and keys with beta < -7 are pruned when using OMP path
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Wave 0: test scaffold for tests/test_am.py (all AM requirement stubs, RED state)
+- [ ] 02-02-PLAN.md — Wave 1: AMCompactedCache dataclass, HighestAttnKeys selection, per-head compaction pipeline (AM-01..AM-04, AM-08)
+- [ ] 02-03-PLAN.md — Wave 2: non-uniform head budgets and generate_reference_queries helper (AM-05, AM-06, AM-07)
 
 ### Phase 3: kvtc Compression
 **Goal**: A stateless `KVTCCompressor` produces byte-level compressed representations of KV cache tensors that decompress within the latency target
@@ -131,7 +136,7 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Linalg Foundation | 1/1 | Complete   | 2026-03-18 |
-| 2. AM Compaction | 0/TBD | Not started | - |
+| 2. AM Compaction | 0/3 | Planned | - |
 | 3. kvtc Compression | 0/TBD | Not started | - |
 | 4. PCA Calibration CLI | 0/TBD | Not started | - |
 | 5. Pipeline Assembly | 0/TBD | Not started | - |
