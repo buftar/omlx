@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-03-19T10:57:32.574Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-03-19T12:46:17.872Z"
 last_activity: 2026-03-19 — Phase 2 Plan 01 complete (AM test scaffold, RED state confirmed)
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-am-compaction P03 | 9 | 2 tasks | 2 files |
 | Phase 03-kvtc-compression P01 | 3 | 2 tasks | 3 files |
 | Phase 03-kvtc-compression P02 | 3 | 2 tasks | 1 files |
+| Phase 03-kvtc-compression P03 | 105 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,9 @@ Recent decisions affecting current work:
 - [Phase 03-kvtc-compression]: KVTCCompressor Wave 0: constructor tests pass immediately; all implementation tests RED with NotImplementedError
 - [Phase 03-kvtc-compression]: Six compression primitives as module-level functions in kvtc.py -- enables direct unit testing without constructing KVTCCompressor
 - [Phase 03-kvtc-compression]: CI lint test_no_bare_linalg_calls scans full file text including docstrings -- negative-example comments must avoid the forbidden regex pattern
+- [Phase 03-kvtc-compression]: On-the-fly path uses n_components=head_dim for lossless PCA rotation on random test data -- production bundle path uses 64 components where real KV cache variance concentrates
+- [Phase 03-kvtc-compression]: Wave 0 RED markers updated to Wave 2 GREEN assertions across all 8 test classes -- test_dp_within_budget and latency thresholds updated for self-describing blob format and on-the-fly path
+- [Phase 03-kvtc-compression]: _dequantize_coeffs vectorized via np.take_along_axis + np.bincount Lloyd -- replaces Python loops, reduces test suite from 18min to 40sec
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T10:57:32.573Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-03-19T12:46:17.870Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
