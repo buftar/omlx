@@ -26,13 +26,13 @@ Requirements for the KV cache compression milestone. Each maps to roadmap phases
 
 ### kvtc Compression
 
-- [ ] **KVTC-01**: Cross-layer PCA basis V^T is computed from calibration data with RoPE embeddings stripped
-- [ ] **KVTC-02**: DP algorithm allocates optimal bit widths per PCA component under a global bit budget
-- [ ] **KVTC-03**: Quantized PCA coefficients are entropy-coded with zstd for final compressed representation
-- [ ] **KVTC-04**: Decompression restores KV cache tensors from compressed bitstream for attention computation
-- [ ] **KVTC-05**: First s=4 tokens (attention sinks) are exempt from compression
-- [ ] **KVTC-06**: Last w=128 tokens (sliding window) are exempt from compression
-- [ ] **KVTC-07**: GQA models are handled correctly (compress KV heads, not query heads)
+- [x] **KVTC-01**: Cross-layer PCA basis V^T is computed from calibration data with RoPE embeddings stripped
+- [x] **KVTC-02**: DP algorithm allocates optimal bit widths per PCA component under a global bit budget
+- [x] **KVTC-03**: Quantized PCA coefficients are entropy-coded with zstd for final compressed representation
+- [x] **KVTC-04**: Decompression restores KV cache tensors from compressed bitstream for attention computation
+- [x] **KVTC-05**: First s=4 tokens (attention sinks) are exempt from compression
+- [x] **KVTC-06**: Last w=128 tokens (sliding window) are exempt from compression
+- [x] **KVTC-07**: GQA models are handled correctly (compress KV heads, not query heads)
 
 ### Calibration
 
@@ -119,13 +119,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AM-06 | Phase 2 | Complete |
 | AM-07 | Phase 2 | Complete |
 | AM-08 | Phase 2 | Complete |
-| KVTC-01 | Phase 3 | Pending |
-| KVTC-02 | Phase 3 | Pending |
-| KVTC-03 | Phase 3 | Pending |
-| KVTC-04 | Phase 3 | Pending |
-| KVTC-05 | Phase 3 | Pending |
-| KVTC-06 | Phase 3 | Pending |
-| KVTC-07 | Phase 3 | Pending |
+| KVTC-01 | Phase 3 | Complete |
+| KVTC-02 | Phase 3 | Complete |
+| KVTC-03 | Phase 3 | Complete |
+| KVTC-04 | Phase 3 | Complete |
+| KVTC-05 | Phase 3 | Complete |
+| KVTC-06 | Phase 3 | Complete |
+| KVTC-07 | Phase 3 | Complete |
 | CAL-01 | Phase 4 | Pending |
 | CAL-02 | Phase 4 | Pending |
 | CAL-03 | Phase 4 | Pending |
