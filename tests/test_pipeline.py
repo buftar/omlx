@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 
 from omlx.compression.am import AMCompactedCache
-from omlx.compression.pipeline import KVCachePipeline, PipelineBlob
+from omlx.compression.pipeline import KVCachePipeline, PipelineBlob, _mx_materialize
 
 
 # ---------------------------------------------------------------------------
@@ -156,4 +156,92 @@ class TestSlowQwen:
     @pytest.mark.slow
     def test_qwen_round_trip(self):
         """PIPE-02 slow: full Qwen 2.5 7B round-trip through the pipeline."""
-        pytest.skip("Wave 2 — requires Qwen 2.5 7B")
+        mlx_lm = pytest.importorskip("mlx_lm")
+        from mlx_lm.models.cache import make_prompt_cache
+
+        # Load Qwen 2.5 7B Instruct — skip gracefully if not cached locally
+        try:
+            model, tokenizer = mlx_lm.load("Qwen/Qwen2.5-7B-Instruct")
+        except (FileNotFoundError, OSError):
+            pytest.skip("Qwen 2.5 7B not available locally")
+
+        # Tokenize a moderately long prompt (aim for seq_len > 132)
+        # n_sink=4 + window=128 = 132 minimum for non-empty AM body
+        base_prompt = (
+            "Summarize the key ideas behind transformer self-attention in detail. "
+            "Explain query, key, and value projections, multi-head attention, "
+            "positional encodings, and how the attention mechanism allows each token "
+            "to attend to every other token in the sequence."
+        )
+        input_ids = tokenizer.encode(base_prompt)
+        while len(input_ids) <= 132:
+            base_prompt = base_prompt + " " + base_prompt
+            input_ids = tokenizer.encode(base_prompt)
+
+        tokens = mx.array(input_ids)[None]  # [1, seq_len]
+
+        # Run a forward pass to populate the KV cache via mlx_lm prompt cache API
+        cache = make_prompt_cache(model)
+        _ = model(tokens, cache=cache)
+        # Materialize all cache tensors before numpy bridge (MLX lazy eval)
+        _mx_materialize(*[v for c in cache for v in [c.keys, c.values] if v is not None])
+
+        # Extract KV cache as list[tuple[mx.array, mx.array]] — one tuple per layer.
+        # cache[i].offset is the actual filled sequence length; keys/values may be
+        # over-allocated (mlx_lm allocates in chunks). Slice to filled region.
+        actual_seq_len = cache[0].offset
+        kv_cache = [
+            (c.keys[:, :, :actual_seq_len, :], c.values[:, :, :actual_seq_len, :])
+            for c in cache
+        ]
+
+        original_seq_len = kv_cache[0][0].shape[2]
+        assert original_seq_len > 132, (
+            f"seq_len={original_seq_len} not > 132; prompt too short for non-empty AM body"
+        )
+
+        # Build pipeline in testing path (bundle_path=None)
+        pipeline = KVCachePipeline(bundle_path=None, am_ratio=4.0)
+
+        # --- compress() assertions ---
+        blob = pipeline.compress(kv_cache)
+        assert isinstance(blob, PipelineBlob), "compress() must return PipelineBlob"
+        assert blob.compaction_ratio > 1.0, (
+            f"compaction_ratio={blob.compaction_ratio:.4f} not > 1.0"
+        )
+        assert len(blob.compressed) > 0, "compressed bytes must be non-empty"
+        assert blob.logical_seq_len == original_seq_len, (
+            f"logical_seq_len={blob.logical_seq_len} != original {original_seq_len}"
+        )
+
+        # --- decompress() assertions ---
+        layers, logical_seq_len = pipeline.decompress(blob)
+        assert logical_seq_len == blob.logical_seq_len, (
+            "decompress() must return blob.logical_seq_len unchanged"
+        )
+        assert len(layers) == len(kv_cache), (
+            f"decompress returned {len(layers)} layers, expected {len(kv_cache)}"
+        )
+
+        # Check decompressed layer shapes: [1, n_kv_heads, compacted_seq_len, head_dim]
+        compacted_seq_len = layers[0][0].shape[2]
+        assert compacted_seq_len < original_seq_len, (
+            f"compacted_seq_len={compacted_seq_len} not < original {original_seq_len}"
+        )
+        for i, (k, v) in enumerate(layers):
+            assert k.ndim == 4, f"Layer {i} keys: expected 4D, got {k.ndim}D"
+            assert v.ndim == 4, f"Layer {i} values: expected 4D, got {v.ndim}D"
+            assert k.shape[2] == compacted_seq_len, (
+                f"Layer {i} keys shape[2]={k.shape[2]} != compacted_seq_len={compacted_seq_len}"
+            )
+
+        # --- cosine similarity: decompressed vs compacted reference ---
+        # compact() separately to get the reference values at compacted token count
+        compacted = pipeline.compact(kv_cache)
+        for i, ((_, v_compacted), (_, v_restored)) in enumerate(
+            zip(compacted.layers, layers)
+        ):
+            sim = cosine_sim(np.array(v_compacted), np.array(v_restored))
+            assert sim > 0.9, (
+                f"Layer {i} cosine_sim={sim:.4f} below 0.9 threshold (bundle=None path)"
+            )
