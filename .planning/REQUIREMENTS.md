@@ -36,11 +36,11 @@ Requirements for the KV cache compression milestone. Each maps to roadmap phases
 
 ### Calibration
 
-- [ ] **CAL-01**: User can run `omlx calibrate-kv <model>` to generate PCA basis for any supported model
-- [ ] **CAL-02**: Calibration uses randomized SVD on a representative dataset (~200K tokens)
-- [ ] **CAL-03**: PCA basis V^T, mean µ, and DP bit allocation table are stored alongside model weights
-- [ ] **CAL-04**: Head entropy sensitivity curves are computed and stored for AM non-uniform budgets
-- [ ] **CAL-05**: Calibration completes in under 10 minutes for models up to 12B parameters on Apple Silicon
+- [x] **CAL-01**: User can run `omlx calibrate-kv <model>` to generate PCA basis for any supported model
+- [x] **CAL-02**: Calibration uses randomized SVD on a representative dataset (~200K tokens)
+- [x] **CAL-03**: PCA basis V^T, mean µ, and DP bit allocation table are stored alongside model weights
+- [x] **CAL-04**: Head entropy sensitivity curves are computed and stored for AM non-uniform budgets
+- [x] **CAL-05**: Calibration completes in under 10 minutes for models up to 12B parameters on Apple Silicon
 
 ### Pipeline Integration
 
@@ -126,11 +126,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | KVTC-05 | Phase 3 | Complete |
 | KVTC-06 | Phase 3 | Complete |
 | KVTC-07 | Phase 3 | Complete |
-| CAL-01 | Phase 4 | Pending |
-| CAL-02 | Phase 4 | Pending |
-| CAL-03 | Phase 4 | Pending |
-| CAL-04 | Phase 4 | Pending |
-| CAL-05 | Phase 4 | Pending |
+| CAL-01 | Phase 4 | Complete |
+| CAL-02 | Phase 4 | Complete |
+| CAL-03 | Phase 4 | Complete |
+| CAL-04 | Phase 4 | Complete |
+| CAL-05 | Phase 4 | Complete |
 | PIPE-01 | Phase 5 | Pending |
 | PIPE-02 | Phase 5 | Pending |
 | PIPE-03 | Phase 5 | Pending |
