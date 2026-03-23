@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-03-23T03:11:46.916Z"
+stopped_at: Completed 05-pipeline-assembly 05-01-PLAN.md
+last_updated: "2026-03-23T03:35:12.717Z"
 last_activity: 2026-03-19 — Phase 2 Plan 01 complete (AM test scaffold, RED state confirmed)
 progress:
   total_phases: 8
   completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 13
+  completed_plans: 11
   percent: 0
 ---
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-pca-calibration-cli P01 | 3 | 2 tasks | 3 files |
 | Phase 04-pca-calibration-cli P02 | 15 | 2 tasks | 2 files |
 | Phase 04-pca-calibration-cli P03 | 20 | 2 tasks | 2 files |
+| Phase 05-pipeline-assembly P01 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,9 @@ Recent decisions affecting current work:
 - [Phase 04-pca-calibration-cli]: _dp_allocate_bits called with 4 required args (singular_values, bits_per_token, n_tok, n_components) -- actual kvtc.py signature differs from plan's 2-arg example
 - [Phase 04-pca-calibration-cli]: test_cli_help_registered uses 'uv run omlx calibrate-kv --help' not 'python -m omlx' since omlx has no __main__.py
 - [Phase 04-pca-calibration-cli]: tqdm and mlx_lm imports wrapped in try/except at module level for graceful fallback in calibrator.py
+- [Phase 05-pipeline-assembly]: rope_theta and rope_traditional are constructor params on KVCachePipeline, not stored in calibration bundle
+- [Phase 05-pipeline-assembly]: PipelineBlob.compaction_ratio stores actual AM ratio achieved (not target) for Phase 8 observability
+- [Phase 05-pipeline-assembly]: Wave 0 RED scaffold pattern: tests call methods directly, NotImplementedError propagates as unhandled exception causing RED exit code 1
 
 ### Pending Todos
 
@@ -110,6 +114,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T03:11:46.914Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-pipeline-assembly/05-CONTEXT.md
+Last session: 2026-03-23T03:35:12.715Z
+Stopped at: Completed 05-pipeline-assembly 05-01-PLAN.md
+Resume file: None

@@ -154,7 +154,7 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 | 2. AM Compaction | 3/3 | Complete   | 2026-03-19 |
 | 3. kvtc Compression | 3/3 | Complete   | 2026-03-19 |
 | 4. PCA Calibration CLI | 3/3 | Complete   | 2026-03-23 |
-| 5. Pipeline Assembly | 0/3 | In progress | - |
+| 5. Pipeline Assembly | 1/3 | In Progress|  |
 | 6. Cache Integration | 0/TBD | Not started | - |
 | 7. Benchmark Suite | 0/TBD | Not started | - |
 | 8. Observability | 0/TBD | Not started | - |

@@ -44,11 +44,11 @@ Requirements for the KV cache compression milestone. Each maps to roadmap phases
 
 ### Pipeline Integration
 
-- [ ] **PIPE-01**: AM→kvtc combined pipeline compresses KV cache with multiplicative ratio (token reduction × byte compression)
-- [ ] **PIPE-02**: Full round-trip compress→decompress restores a cache usable for continued inference
-- [ ] **PIPE-03**: AM compaction is triggered automatically when GPU memory pressure exceeds threshold
-- [ ] **PIPE-04**: kvtc compression is triggered on cache eviction to SSD cold storage
-- [ ] **PIPE-05**: Decompression is triggered on cache miss when restoring from SSD
+- [x] **PIPE-01**: AM→kvtc combined pipeline compresses KV cache with multiplicative ratio (token reduction × byte compression)
+- [x] **PIPE-02**: Full round-trip compress→decompress restores a cache usable for continued inference
+- [x] **PIPE-03**: AM compaction is triggered automatically when GPU memory pressure exceeds threshold
+- [x] **PIPE-04**: kvtc compression is triggered on cache eviction to SSD cold storage
+- [x] **PIPE-05**: Decompression is triggered on cache miss when restoring from SSD
 - [ ] **PIPE-06**: Compression integrates with omlx cache system without modifying the CacheManager ABC
 - [ ] **PIPE-07**: Existing cache behavior is unchanged when compression is disabled (no-op path)
 - [ ] **PIPE-08**: Compression can be enabled/disabled at runtime via config flags
@@ -131,11 +131,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CAL-03 | Phase 4 | Complete |
 | CAL-04 | Phase 4 | Complete |
 | CAL-05 | Phase 4 | Complete |
-| PIPE-01 | Phase 5 | Pending |
-| PIPE-02 | Phase 5 | Pending |
-| PIPE-03 | Phase 5 | Pending |
-| PIPE-04 | Phase 5 | Pending |
-| PIPE-05 | Phase 5 | Pending |
+| PIPE-01 | Phase 5 | Complete |
+| PIPE-02 | Phase 5 | Complete |
+| PIPE-03 | Phase 5 | Complete |
+| PIPE-04 | Phase 5 | Complete |
+| PIPE-05 | Phase 5 | Complete |
 | PIPE-06 | Phase 6 | Pending |
 | PIPE-07 | Phase 6 | Pending |
 | PIPE-08 | Phase 6 | Pending |
