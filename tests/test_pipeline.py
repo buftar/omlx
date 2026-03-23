@@ -88,14 +88,23 @@ class TestRoundTrip:
         assert v0.ndim == 4
 
     def test_round_trip_cosine_sim(self):
-        """PIPE-02: cosine similarity of decompressed values > 0.9 (synthetic threshold)."""
+        """PIPE-02: cosine similarity of decompressed values > 0.9 (synthetic threshold).
+
+        Compares decompressed (kvtc round-trip) values against the compacted values
+        (post-AM), not the original values.  AM compaction is lossy and changes the
+        token count; comparing original vs decompressed would produce incompatible
+        shapes.  The cosine-sim check verifies kvtc codec fidelity only.
+        """
         cache = make_synthetic_cache()
         pipeline = KVCachePipeline()
-        blob = pipeline.compress(cache)  # raises NotImplementedError -> RED
+        # Get the compacted cache directly for reference values
+        compacted = pipeline.compact(cache)
+        _, v_compacted = compacted.layers[0]
+        # Full round-trip through compress -> decompress
+        blob = pipeline.compress(cache)
         layers, _ = pipeline.decompress(blob)
-        _, v_orig = cache[0]
         _, v_restored = layers[0]
-        sim = cosine_sim(np.array(v_orig), np.array(v_restored))
+        sim = cosine_sim(np.array(v_compacted), np.array(v_restored))
         assert sim > 0.9, f"cosine_sim={sim:.4f} below 0.9 threshold"
 
     def test_logical_seq_len_preserved(self):

@@ -84,6 +84,7 @@ class KVCachePipeline:
         self._rope_traditional = rope_traditional
 
         if bundle_path is None:
+            self._rope_params = None
             self._am = AMCompactor(
                 head_entropy=None,
                 n_sink_tokens=n_sink_tokens,
@@ -97,6 +98,7 @@ class KVCachePipeline:
             from omlx.compression.calibrator import load_calibration_bundle
 
             pca_bundle, head_entropy = load_calibration_bundle(Path(bundle_path))
+            self._rope_params = (rope_theta, rope_traditional)
             self._am = AMCompactor(
                 head_entropy=head_entropy,
                 n_sink_tokens=n_sink_tokens,
@@ -124,7 +126,8 @@ class KVCachePipeline:
         -------
         AMCompactedCache
         """
-        raise NotImplementedError("compact() — implemented in Wave 1")
+        effective_ratio = ratio if ratio is not None else self._am_ratio
+        return self._am.compact(kv_cache, ratio=effective_ratio, queries=queries)
 
     def compress(self, kv_cache, queries=None) -> PipelineBlob:
         """Eviction path: AM compaction followed by KVTC quantisation.
@@ -138,7 +141,19 @@ class KVCachePipeline:
         -------
         PipelineBlob
         """
-        raise NotImplementedError("compress() — implemented in Wave 1")
+        compacted = self._am.compact(kv_cache, ratio=self._am_ratio, queries=queries)
+        original_seq_len = compacted.logical_seq_len
+        compacted_seq_len = compacted.layers[0][0].shape[2]
+        actual_ratio = original_seq_len / compacted_seq_len if compacted_seq_len > 0 else 1.0
+
+        stripped_layers = self._strip_rope(compacted.layers)
+        compressed_bytes = self._kvtc.compress(stripped_layers)
+
+        return PipelineBlob(
+            compressed=compressed_bytes,
+            logical_seq_len=original_seq_len,
+            compaction_ratio=actual_ratio,
+        )
 
     def decompress(self, blob: PipelineBlob):
         """Restore a PipelineBlob to KV-cache layers.
@@ -152,7 +167,8 @@ class KVCachePipeline:
         tuple[list[tuple[mx.array, mx.array]], int]
             (layers, logical_seq_len)
         """
-        raise NotImplementedError("decompress() — implemented in Wave 1")
+        layers = self._kvtc.decompress(blob.compressed)
+        return layers, blob.logical_seq_len
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -161,6 +177,9 @@ class KVCachePipeline:
     def _strip_rope(self, compacted_layers):
         """Remove RoPE from compacted key tensors before KVTC PCA rotation.
 
+        When bundle_path=None (self._rope_params is None), returns compacted_layers
+        unchanged — stripping is skipped on the no-bundle testing path.
+
         Parameters
         ----------
         compacted_layers : list[tuple[mx.array, mx.array]]
@@ -168,7 +187,25 @@ class KVCachePipeline:
 
         Returns
         -------
-        list[tuple[np.ndarray, np.ndarray]]
-            Same shape, RoPE removed from keys, values unchanged as numpy.
+        list[tuple[mx.array, mx.array]]
+            Same shape, RoPE removed from keys (or unchanged when rope_params is None).
         """
-        raise NotImplementedError("_strip_rope() — implemented in Wave 1")
+        if self._rope_params is None:
+            return compacted_layers
+
+        from omlx.compression.calibrator import strip_rope_from_keys
+
+        rope_theta, rope_traditional = self._rope_params
+        stripped = []
+        for keys, values in compacted_layers:
+            # Force MLX lazy graph execution before numpy bridge (Pitfall 5)
+            _mx_materialize(keys)
+            keys_np = np.array(keys.astype(mx.float32))
+            # offset=0: kvtc treats compacted body as position-agnostic vectors
+            keys_stripped_np = strip_rope_from_keys(
+                keys_np, rope_theta, rope_traditional, offset=0
+            )
+            # Convert back to mx.array float16 — kvtc expects mx.array (Pitfall 2)
+            stripped_keys = mx.array(keys_stripped_np.astype(np.float16))
+            stripped.append((stripped_keys, values))
+        return stripped
