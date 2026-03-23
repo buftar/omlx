@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Linalg Foundation** - Float32-safe MLX linalg helpers and scipy NNLS bridge that all compressors depend on (completed 2026-03-18)
 - [x] **Phase 2: AM Compaction** - Stateless attention-matching token compactor with NNLS/OLS fitting and non-uniform head budgets (completed 2026-03-19)
 - [x] **Phase 3: kvtc Compression** - PCA-based byte-level storage compressor with DP quantization, zstd entropy coding, and exemption logic (completed 2026-03-19)
-- [ ] **Phase 4: PCA Calibration CLI** - `omlx calibrate-kv <model>` command that generates PCA bundle required for kvtc
+- [x] **Phase 4: PCA Calibration CLI** - `omlx calibrate-kv <model>` command that generates PCA bundle required for kvtc (completed 2026-03-23)
 - [ ] **Phase 5: Pipeline Assembly** - AM-to-kvtc combined pipeline with full compress/decompress round-trip and trigger wiring
 - [ ] **Phase 6: Cache Integration** - Decorator-pattern integration into omlx cache system with async boundary and config flags
 - [ ] **Phase 7: Benchmark Suite** - Task-accuracy-gated benchmark harness with multi-model validation across four model families
@@ -148,7 +148,7 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 | 1. Linalg Foundation | 1/1 | Complete   | 2026-03-18 |
 | 2. AM Compaction | 3/3 | Complete   | 2026-03-19 |
 | 3. kvtc Compression | 3/3 | Complete   | 2026-03-19 |
-| 4. PCA Calibration CLI | 2/3 | In Progress|  |
+| 4. PCA Calibration CLI | 3/3 | Complete   | 2026-03-23 |
 | 5. Pipeline Assembly | 0/TBD | Not started | - |
 | 6. Cache Integration | 0/TBD | Not started | - |
 | 7. Benchmark Suite | 0/TBD | Not started | - |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-23T02:10:57.420Z"
+stopped_at: "Completed 04-03-PLAN.md (checkpoint:human-verify pending)"
+last_updated: "2026-03-23T02:16:52.800Z"
 last_activity: 2026-03-19 — Phase 2 Plan 01 complete (AM test scaffold, RED state confirmed)
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-kvtc-compression P03 | 105 | 2 tasks | 2 files |
 | Phase 04-pca-calibration-cli P01 | 3 | 2 tasks | 3 files |
 | Phase 04-pca-calibration-cli P02 | 15 | 2 tasks | 2 files |
+| Phase 04-pca-calibration-cli P03 | 20 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,9 @@ Recent decisions affecting current work:
 - [Phase 04-pca-calibration-cli]: strip_rope_from_keys implements inverse of mx.fast.rope; non-traditional uses half-dim split, traditional uses consecutive pairs
 - [Phase 04-pca-calibration-cli]: compute_pca_basis always uses svd_f32 (not bare mx.linalg.svd) to enforce float32 and CPU stream routing
 - [Phase 04-pca-calibration-cli]: load_calibration_bundle maps group-indexed npz arrays to per-layer dicts -- each layer in a group shares the same PCA basis
+- [Phase 04-pca-calibration-cli]: _dp_allocate_bits called with 4 required args (singular_values, bits_per_token, n_tok, n_components) -- actual kvtc.py signature differs from plan's 2-arg example
+- [Phase 04-pca-calibration-cli]: test_cli_help_registered uses 'uv run omlx calibrate-kv --help' not 'python -m omlx' since omlx has no __main__.py
+- [Phase 04-pca-calibration-cli]: tqdm and mlx_lm imports wrapped in try/except at module level for graceful fallback in calibrator.py
 
 ### Pending Todos
 
@@ -106,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T02:10:57.418Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-03-23T02:16:44.868Z
+Stopped at: Completed 04-03-PLAN.md (checkpoint:human-verify pending)
 Resume file: None
