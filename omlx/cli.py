@@ -357,6 +357,18 @@ def launch_command(args):
     )
 
 
+def calibrate_kv_command(args):
+    """Generate PCA calibration bundle for KV cache compression."""
+    from omlx.compression.calibrator import run_calibration
+    run_calibration(
+        model_path=args.model,
+        n_components=args.n_components,
+        n_groups=args.n_groups,
+        bits_per_token=args.bits_per_token,
+        output_path=args.output,
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="omlx: Production-ready LLM server for Apple Silicon",
@@ -549,12 +561,49 @@ Example directory structure:
         help="OpenClaw tools profile (default: coding)",
     )
 
+    # Calibrate-kv command
+    calibrate_parser = subparsers.add_parser(
+        "calibrate-kv",
+        help="Generate PCA calibration bundle for KV cache compression",
+    )
+    calibrate_parser.add_argument(
+        "model",
+        type=str,
+        help="Path to model directory or HuggingFace repo ID",
+    )
+    calibrate_parser.add_argument(
+        "--n-components",
+        type=int,
+        default=64,
+        help="Number of PCA components to retain (default: 64)",
+    )
+    calibrate_parser.add_argument(
+        "--n-groups",
+        type=int,
+        default=None,
+        help="Layer groups for cross-layer basis sharing (default: per-layer)",
+    )
+    calibrate_parser.add_argument(
+        "--bits-per-token",
+        type=float,
+        default=4.0,
+        help="Global bit budget for DP allocation (default: 4.0)",
+    )
+    calibrate_parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Output directory (default: alongside model weights)",
+    )
+
     args = parser.parse_args()
 
     if args.command == "serve":
         serve_command(args)
     elif args.command == "launch":
         launch_command(args)
+    elif args.command == "calibrate-kv":
+        calibrate_kv_command(args)
     else:
         parser.print_help()
         sys.exit(1)
