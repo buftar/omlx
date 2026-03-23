@@ -12,6 +12,7 @@ CAL-05: Full calibration timing (slow, requires real model)
 import argparse
 import pathlib
 import tempfile
+from unittest.mock import patch
 import numpy as np
 import mlx.core as mx
 import pytest
@@ -31,10 +32,20 @@ _mx_flush = mx.eval  # MLX graph materialization -- NOT Python eval()
 
 
 class TestCLIDispatch:
-    """CAL-01: CLI dispatch wiring -- calibrate_kv_command raises NotImplementedError."""
+    """CAL-01: CLI dispatch from calibrate-kv command to run_calibration()."""
 
-    def test_dispatch_calls_run_calibration(self):
-        """Build a minimal Namespace and confirm dispatch wires to run_calibration."""
+    def test_dispatch_calls_run_calibration(self, monkeypatch):
+        """calibrate_kv_command dispatches to run_calibration with correct args."""
+        called_with = {}
+
+        def mock_run_calibration(**kwargs):
+            called_with.update(kwargs)
+
+        monkeypatch.setattr(
+            "omlx.compression.calibrator.run_calibration",
+            mock_run_calibration,
+        )
+
         args = argparse.Namespace(
             model="fake-model",
             n_components=64,
@@ -42,8 +53,24 @@ class TestCLIDispatch:
             bits_per_token=4.0,
             output=None,
         )
-        with pytest.raises(NotImplementedError):
-            calibrate_kv_command(args)
+        calibrate_kv_command(args)
+
+        assert called_with["model_path"] == "fake-model"
+        assert called_with["n_components"] == 64
+        assert called_with["n_groups"] is None
+        assert called_with["bits_per_token"] == 4.0
+        assert called_with["output_path"] is None
+
+    def test_cli_help_registered(self):
+        """calibrate-kv subcommand is registered in omlx CLI."""
+        import subprocess
+        result = subprocess.run(
+            ["uv", "run", "omlx", "calibrate-kv", "--help"],
+            capture_output=True, text=True, cwd="/Users/tonysina/projects/omlx"
+        )
+        assert result.returncode == 0
+        assert "--n-components" in result.stdout
+        assert "--bits-per-token" in result.stdout
 
 
 class TestRopeStrip:
