@@ -116,7 +116,14 @@ Plans:
   4. Setting `compression.enabled = false` in config at runtime disables all compression and decompression with no restart required
   5. Target compression ratio and component count are configurable per deployment via `CompressionConfig`
   6. Decompression latency is under 10ms per layer for 8K context sequences in integration tests
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Wave 0: test scaffold tests/test_cache_integration.py (RED state, all PIPE-06..PIPE-10 stubs)
+- [ ] 06-02-PLAN.md — Wave 1: config.py + compressed_cache_manager.py (CompressionConfig, CompressedPagedSSDCacheManager, CompressedTieredCacheManager)
+- [ ] 06-03-PLAN.md — Wave 2: factory.py + cli.py wiring (compression_config arg, --compression-bundle flags)
+- [ ] 06-04-PLAN.md — Wave 2: admin endpoint POST /api/compression/config (runtime toggle, PIPE-08)
+- [ ] 06-05-PLAN.md — Wave 3: slow latency test + human verification checkpoint
 
 ### Phase 7: Benchmark Suite
 **Goal**: The compression pipeline has a reproducible benchmark harness that enforces task-accuracy quality thresholds and validates across four model families
@@ -155,6 +162,6 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 | 3. kvtc Compression | 3/3 | Complete   | 2026-03-19 |
 | 4. PCA Calibration CLI | 3/3 | Complete   | 2026-03-23 |
 | 5. Pipeline Assembly | 3/3 | Complete   | 2026-03-23 |
-| 6. Cache Integration | 0/TBD | Not started | - |
+| 6. Cache Integration | 0/5 | Not started | - |
 | 7. Benchmark Suite | 0/TBD | Not started | - |
 | 8. Observability | 0/TBD | Not started | - |
