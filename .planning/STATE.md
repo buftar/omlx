@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-pipeline-assembly 05-01-PLAN.md
-last_updated: "2026-03-23T03:35:12.717Z"
+stopped_at: Completed 05-pipeline-assembly 05-02-PLAN.md
+last_updated: "2026-03-23T03:40:41.210Z"
 last_activity: 2026-03-19 — Phase 2 Plan 01 complete (AM test scaffold, RED state confirmed)
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-pca-calibration-cli P02 | 15 | 2 tasks | 2 files |
 | Phase 04-pca-calibration-cli P03 | 20 | 2 tasks | 2 files |
 | Phase 05-pipeline-assembly P01 | 3 | 2 tasks | 2 files |
+| Phase 05-pipeline-assembly P02 | 2 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,8 @@ Recent decisions affecting current work:
 - [Phase 05-pipeline-assembly]: rope_theta and rope_traditional are constructor params on KVCachePipeline, not stored in calibration bundle
 - [Phase 05-pipeline-assembly]: PipelineBlob.compaction_ratio stores actual AM ratio achieved (not target) for Phase 8 observability
 - [Phase 05-pipeline-assembly]: Wave 0 RED scaffold pattern: tests call methods directly, NotImplementedError propagates as unhandled exception causing RED exit code 1
+- [Phase 05-pipeline-assembly]: compaction_ratio computed from actual compacted_seq_len (not 1/am_ratio) for Phase 8 observability accuracy
+- [Phase 05-pipeline-assembly]: test_round_trip_cosine_sim compares compacted vs decompressed values (not original) — AM changes token count causing shape incompatibility
 
 ### Pending Todos
 
@@ -114,6 +117,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T03:35:12.715Z
-Stopped at: Completed 05-pipeline-assembly 05-01-PLAN.md
+Last session: 2026-03-23T03:40:41.208Z
+Stopped at: Completed 05-pipeline-assembly 05-02-PLAN.md
 Resume file: None
