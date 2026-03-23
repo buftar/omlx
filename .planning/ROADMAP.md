@@ -98,7 +98,12 @@ Plans:
   3. Memory-pressure signal triggers AM compaction via a registered callback — compaction fires when pressure exceeds threshold and not otherwise
   4. Eviction-path signal triggers kvtc compression — compression fires on eviction to SSD and not on normal reads or writes
   5. Decompression fires on cache miss when restoring from SSD and the restored cache is usable for the requesting session
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Wave 0: pipeline.py stub + test_pipeline.py scaffold (RED state)
+- [ ] 05-02-PLAN.md — Wave 1: KVCachePipeline full implementation (all fast tests GREEN)
+- [ ] 05-03-PLAN.md — Wave 2: Qwen slow test + human verification
 
 ### Phase 6: Cache Integration
 **Goal**: The compression pipeline is wired into omlx's existing cache system as a non-breaking decorator with async execution and full config control
@@ -149,7 +154,7 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 | 2. AM Compaction | 3/3 | Complete   | 2026-03-19 |
 | 3. kvtc Compression | 3/3 | Complete   | 2026-03-19 |
 | 4. PCA Calibration CLI | 3/3 | Complete   | 2026-03-23 |
-| 5. Pipeline Assembly | 0/TBD | Not started | - |
+| 5. Pipeline Assembly | 0/3 | In progress | - |
 | 6. Cache Integration | 0/TBD | Not started | - |
 | 7. Benchmark Suite | 0/TBD | Not started | - |
 | 8. Observability | 0/TBD | Not started | - |
