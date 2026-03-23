@@ -55,7 +55,7 @@ completed: 2026-03-22
 - **Duration:** ~20 min
 - **Started:** 2026-03-22T00:00:00Z
 - **Completed:** 2026-03-22T00:20:00Z
-- **Tasks:** 2 of 3 (Task 3 is checkpoint:human-verify)
+- **Tasks:** 3 of 3
 - **Files modified:** 2
 
 ## Accomplishments
@@ -70,6 +70,7 @@ completed: 2026-03-22
 
 1. **Task 1: Implement run_calibration()** - `d33438a` (feat)
 2. **Task 2: Update TestCLIDispatch with mock** - `084e990` (feat)
+3. **Task 3: Human verify — full unit suite GREEN and CLI registered** - approved (checkpoint:human-verify)
 
 ## Files Created/Modified
 
