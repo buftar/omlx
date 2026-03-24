@@ -57,14 +57,14 @@ Requirements for the KV cache compression milestone. Each maps to roadmap phases
 
 ### Validation
 
-- [ ] **VAL-01**: Benchmark suite measures compression ratio, cosine similarity, downstream task accuracy, and decompression latency
-- [ ] **VAL-02**: AM compaction at 4× maintains >0.998 attention output cosine similarity
-- [ ] **VAL-03**: kvtc at 16× stays within 1 point of vanilla on standard benchmarks (GSM8K, MMLU, LITM)
-- [ ] **VAL-04**: Pipeline is validated against Qwen 2.5 7B (GQA, spiked)
-- [ ] **VAL-05**: Pipeline is validated against Llama 3.x 8B (GQA, popular baseline)
-- [ ] **VAL-06**: Pipeline is validated against Gemma 3 variants (SWA handling)
-- [ ] **VAL-07**: Pipeline is validated against DeepSeek R1 (long reasoning chains)
-- [ ] **VAL-08**: Benchmark results are reproducible via a single CLI command
+- [x] **VAL-01**: Benchmark suite measures compression ratio, cosine similarity, downstream task accuracy, and decompression latency
+- [x] **VAL-02**: AM compaction at 4× maintains >0.998 attention output cosine similarity
+- [x] **VAL-03**: kvtc at 16× stays within 1 point of vanilla on standard benchmarks (GSM8K, MMLU, LITM)
+- [x] **VAL-04**: Pipeline is validated against Qwen 2.5 7B (GQA, spiked)
+- [x] **VAL-05**: Pipeline is validated against Llama 3.x 8B (GQA, popular baseline)
+- [x] **VAL-06**: Pipeline is validated against Gemma 3 variants (SWA handling)
+- [x] **VAL-07**: Pipeline is validated against DeepSeek R1 (long reasoning chains)
+- [x] **VAL-08**: Benchmark results are reproducible via a single CLI command
 
 ### Observability
 
@@ -141,14 +141,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PIPE-08 | Phase 6 | Complete |
 | PIPE-09 | Phase 6 | Complete |
 | PIPE-10 | Phase 6 | Complete |
-| VAL-01 | Phase 7 | Pending |
-| VAL-02 | Phase 7 | Pending |
-| VAL-03 | Phase 7 | Pending |
-| VAL-04 | Phase 7 | Pending |
-| VAL-05 | Phase 7 | Pending |
-| VAL-06 | Phase 7 | Pending |
-| VAL-07 | Phase 7 | Pending |
-| VAL-08 | Phase 7 | Pending |
+| VAL-01 | Phase 7 | Complete |
+| VAL-02 | Phase 7 | Complete |
+| VAL-03 | Phase 7 | Complete |
+| VAL-04 | Phase 7 | Complete |
+| VAL-05 | Phase 7 | Complete |
+| VAL-06 | Phase 7 | Complete |
+| VAL-07 | Phase 7 | Complete |
+| VAL-08 | Phase 7 | Complete |
 | OBS-01 | Phase 8 | Pending |
 | OBS-02 | Phase 8 | Pending |
 | OBS-03 | Phase 8 | Pending |
