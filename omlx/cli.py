@@ -631,6 +631,19 @@ Example directory structure:
         help="Output directory (default: alongside model weights)",
     )
 
+    # Benchmark-compression command
+    bench_parser = subparsers.add_parser(
+        "benchmark-compression",
+        help="Run compression quality benchmark suite",
+    )
+    bench_parser.add_argument("model", type=str, help="Model path or HuggingFace repo ID")
+    bench_parser.add_argument("--bundle", type=str, default=None, help="PCA calibration bundle path (.npz)")
+    bench_parser.add_argument("--seed", type=int, default=42)
+    bench_parser.add_argument("--n-samples", type=int, default=200, help="Problems per task (default: 200)")
+    bench_parser.add_argument("--output", type=str, default=None, help="JSON report output path")
+    bench_parser.add_argument("--tasks", nargs="+", default=["cosine_sim", "perplexity", "gsm8k", "mmlu", "litm"], help="Tasks to run")
+    bench_parser.add_argument("--am-ratio", type=float, default=4.0)
+
     args = parser.parse_args()
 
     if args.command == "serve":
@@ -639,6 +652,9 @@ Example directory structure:
         launch_command(args)
     elif args.command == "calibrate-kv":
         calibrate_kv_command(args)
+    elif args.command == "benchmark-compression":
+        from omlx.compression.benchmark import benchmark_compression_command
+        benchmark_compression_command(args)
     else:
         parser.print_help()
         sys.exit(1)
