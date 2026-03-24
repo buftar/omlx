@@ -100,6 +100,7 @@ class CacheFactory:
     def create_paged_ssd_cache(
         config: CacheConfig,
         model_name: Optional[str] = None,
+        compression_config=None,
     ) -> Optional["PagedSSDCacheManager"]:
         """
         Create a PagedSSDCacheManager instance.
@@ -107,6 +108,10 @@ class CacheFactory:
         Args:
             config: Cache configuration.
             model_name: Override model name for cache isolation.
+            compression_config: Optional CompressionConfig. When set and enabled,
+                returns a CompressedPagedSSDCacheManager subclass. When None or
+                disabled, returns a vanilla PagedSSDCacheManager (identical to
+                pre-Phase-6 behavior).
 
         Returns:
             Configured PagedSSDCacheManager instance, or None if disabled.
@@ -114,11 +119,27 @@ class CacheFactory:
         if config.paged_ssd_cache_dir is None:
             return None
 
-        from .paged_ssd_cache import PagedSSDCacheManager
-
         cache_dir = config.paged_ssd_cache_dir
         if model_name:
             cache_dir = cache_dir / model_name
+
+        # When compression is configured and enabled, use the compressed subclass.
+        # This is the only branch that differs from pre-Phase-6 behavior.
+        if (
+            compression_config is not None
+            and compression_config.enabled
+            and compression_config.bundle_path is not None
+        ):
+            from omlx.compression.compressed_cache_manager import (
+                CompressedPagedSSDCacheManager,
+            )
+            return CompressedPagedSSDCacheManager(
+                cache_dir=cache_dir,
+                max_size_bytes=config.max_paged_ssd_cache_size,
+                compression_config=compression_config,
+            )
+
+        from .paged_ssd_cache import PagedSSDCacheManager
 
         return PagedSSDCacheManager(
             cache_dir=cache_dir,
@@ -192,6 +213,7 @@ class CacheFactory:
         config: CacheConfig,
         model: Any = None,
         num_layers: Optional[int] = None,
+        compression_config=None,
     ) -> dict:
         """
         Create a complete cache stack with all components.
@@ -204,6 +226,10 @@ class CacheFactory:
             config: Cache configuration.
             model: Model instance for cache identification.
             num_layers: Number of model layers.
+            compression_config: Optional CompressionConfig. When set and enabled,
+                paged_ssd_cache will be a CompressedPagedSSDCacheManager. When
+                None or disabled, behavior is byte-for-byte identical to the
+                pre-Phase-6 code path (PIPE-07).
 
         Returns:
             Dictionary with keys: paged_cache, paged_ssd_cache, prefix_cache, memory_monitor
@@ -216,7 +242,9 @@ class CacheFactory:
         # Only create cache components if paged SSD cache is enabled
         if config.paged_ssd_cache_dir is not None:
             paged_cache = CacheFactory.create_paged_cache(config, num_layers)
-            paged_ssd_cache = CacheFactory.create_paged_ssd_cache(config, config.model_name)
+            paged_ssd_cache = CacheFactory.create_paged_ssd_cache(
+                config, config.model_name, compression_config
+            )
 
             if paged_cache is not None and paged_ssd_cache is not None:
                 paged_cache.set_paged_ssd_cache_manager(paged_ssd_cache)
