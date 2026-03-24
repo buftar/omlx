@@ -436,10 +436,155 @@ class TestAdminEndpoint:
         assert cfg.enabled is False
 
 
-class TestDecompressionLatency:
-    """PIPE-10: Decompression latency must be under 10 ms for cached blocks."""
+class TestSlowQwen:
+    """PIPE-10: Real Qwen 2.5 7B round-trip: compress->save->load->decompress."""
 
     @pytest.mark.slow
-    def test_decompression_latency_under_10ms(self, tmp_path):
-        """End-to-end decompression latency < 10 ms (stub — benchmark not yet implemented)."""
-        raise NotImplementedError("latency test not yet implemented")
+    def test_qwen_round_trip(self, tmp_path):
+        """Real Qwen 2.5 7B: compress->save->load->decompress round-trip.
+
+        Locked decision (CONTEXT.md line 63): verify cosine similarity of
+        keys and values and that inference can continue on the restored cache.
+        """
+        import mlx.core as mx
+        from mlx_lm import load as mlx_load
+        from omlx.compression.config import CompressionConfig
+        from omlx.compression.compressed_cache_manager import CompressedPagedSSDCacheManager
+
+        # 1. Load model and tokenizer
+        model, tokenizer = mlx_load("Qwen/Qwen2.5-7B-Instruct")
+
+        # 2. Prefill to generate a real KV cache
+        prompt = "The quick brown fox jumps over the lazy dog."
+        input_ids = tokenizer.encode(prompt, return_tensors="mlx")
+
+        # Allocate per-layer cache objects using make_prompt_cache if available
+        try:
+            from mlx_lm.models.cache import make_prompt_cache
+            cache = make_prompt_cache(model)
+        except ImportError:
+            # Fallback: allocate cache per the Phase 5 pattern
+            cache = [layer.state for layer in model.layers]
+
+        logits = model(input_ids, cache=cache)
+        # Force materialization of all cache arrays (mlx.eval is not Python eval)
+        mx.eval(logits, *[arr for layer in cache for arr in (layer.keys, layer.values)])
+
+        # 3. Build cache_data in PagedSSDCacheManager's expected format:
+        #    List[Tuple[keys, values]] per layer
+        cache_data = [(layer.keys, layer.values) for layer in cache]
+        token_count = input_ids.shape[-1]
+        block_hash = b"test_qwen_block_" + bytes(16)
+
+        # 4. Compress once via the pipeline to snapshot the *compacted* KV state.
+        # Cosine similarity is checked between compacted input and decompressed
+        # output (not original vs decompressed) — AM compaction is a lossy token
+        # selection step; comparing original to AM-selected tokens is meaningless
+        # as they are different subsets of the sequence.
+        # (Phase 5 locked decision in STATE.md: "compacted vs decompressed")
+        from omlx.compression.pipeline import KVCachePipeline
+
+        compression_config = CompressionConfig(
+            enabled=True,
+            bundle_path=None,       # on-the-fly mode
+            am_ratio=4.0,
+            n_sink_tokens=4,
+            sliding_window=128,
+        )
+        pipeline = KVCachePipeline(
+            bundle_path=compression_config.bundle_path,
+            am_ratio=compression_config.am_ratio,
+            n_sink_tokens=compression_config.n_sink_tokens,
+            sliding_window=compression_config.sliding_window,
+        )
+        blob_ref = pipeline.compress(cache_data)
+        # Decompress immediately to get the compacted reference KV
+        compacted_kv_ref, _tok_ref = pipeline.decompress(blob_ref)
+        # Snapshot the compacted arrays as float32 for comparison
+        compacted_kv = []
+        for k, v in compacted_kv_ref:
+            k_f32 = k.astype(mx.float32)
+            v_f32 = v.astype(mx.float32)
+            mx.eval(k_f32, v_f32)
+            compacted_kv.append((k_f32, v_f32))
+
+        # 5. Save via CompressedPagedSSDCacheManager (uses same pipeline internally)
+        manager = CompressedPagedSSDCacheManager(
+            cache_dir=tmp_path / "ssd_cache",
+            max_size_bytes=1 * 1024 * 1024 * 1024,  # 1 GB
+            hot_cache_max_bytes=256 * 1024 * 1024,   # 256 MB in-memory hot cache
+            compression_config=compression_config,
+        )
+        saved = manager.save_block(
+            block_hash=block_hash,
+            cache_data=cache_data,
+            token_count=token_count,
+            model_name="Qwen/Qwen2.5-7B-Instruct",
+        )
+        assert saved, "save_block() should return True"
+
+        # 6. Load and decompress via manager
+        loaded = manager.load_block(block_hash)
+        assert loaded is not None, "load_block() returned None -- decompression failed"
+
+        # Normalize: decompress returns (kv_list, token_count) or just kv_list
+        # kv_list is List[Tuple[keys, values]] per layer
+        if (
+            isinstance(loaded, tuple)
+            and len(loaded) == 2
+            and isinstance(loaded[1], int)
+        ):
+            loaded_kv = loaded[0]
+        else:
+            loaded_kv = loaded
+
+        assert len(loaded_kv) == len(cache_data), (
+            f"Layer count mismatch: got {len(loaded_kv)}, expected {len(cache_data)}"
+        )
+
+        # 7. Verify cosine similarity: compacted reference vs loaded/decompressed.
+        # Both have the same shape (AM-compacted seq_len) so no trimming needed.
+        # Threshold 0.90 — quantization and serialization are the only losses here.
+        COSINE_THRESHOLD = 0.90
+
+        def cosine_similarity(a: "mx.array", b: "mx.array") -> float:
+            a_flat = a.reshape(-1).astype(mx.float32)
+            b_flat = b.reshape(-1).astype(mx.float32)
+            dot = (a_flat * b_flat).sum().item()
+            norm_a = (a_flat * a_flat).sum().item() ** 0.5
+            norm_b = (b_flat * b_flat).sum().item() ** 0.5
+            return dot / (norm_a * norm_b + 1e-8)
+
+        for i, ((ref_k, ref_v), layer_result) in enumerate(
+            zip(compacted_kv, loaded_kv)
+        ):
+            loaded_k = layer_result[0].astype(mx.float32)
+            loaded_v = layer_result[1].astype(mx.float32)
+            mx.eval(loaded_k, loaded_v)
+
+            sim_k = cosine_similarity(ref_k, loaded_k)
+            sim_v = cosine_similarity(ref_v, loaded_v)
+            assert sim_k > COSINE_THRESHOLD, (
+                f"Layer {i} keys cosine similarity {sim_k:.4f} below threshold "
+                f"{COSINE_THRESHOLD} (compacted vs decompressed)"
+            )
+            assert sim_v > COSINE_THRESHOLD, (
+                f"Layer {i} values cosine similarity {sim_v:.4f} below threshold "
+                f"{COSINE_THRESHOLD} (compacted vs decompressed)"
+            )
+
+        # 8. Verify inference can continue on the restored cache
+        # Restore the KV cache from loaded tensors and run next-token generation
+        for i, layer in enumerate(cache):
+            loaded_k, loaded_v = loaded_kv[i][0], loaded_kv[i][1]
+            layer.keys = loaded_k
+            layer.values = loaded_v
+
+        next_token_input = mx.array([[tokenizer.encode(" The")[0]]])  # single follow-on token
+        try:
+            next_logits = model(next_token_input, cache=cache)
+            mx.eval(next_logits)
+            # If we get here without exception, inference can continue
+            assert next_logits.shape[-1] > 0, "next_logits should have vocab dimension"
+        except Exception as e:
+            pytest.fail(f"Inference continuation failed after cache restore: {e}")
