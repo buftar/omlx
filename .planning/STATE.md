@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-cache-integration-04-PLAN.md
-last_updated: "2026-03-24T02:13:24.399Z"
+stopped_at: Completed 06-cache-integration-05-PLAN.md (awaiting checkpoint)
+last_updated: "2026-03-24T02:20:41.064Z"
 last_activity: 2026-03-19 — Phase 2 Plan 01 complete (AM test scaffold, RED state confirmed)
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 18
-  completed_plans: 17
+  completed_plans: 18
   percent: 0
 ---
 
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06-cache-integration P02 | 10 | 2 tasks | 2 files |
 | Phase 06-cache-integration P03 | 15 | 2 tasks | 4 files |
 | Phase 06-cache-integration P04 | 3 | 1 tasks | 3 files |
+| Phase 06-cache-integration P05 | 25 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,8 @@ Recent decisions affecting current work:
 - [Phase 06-cache-integration]: TestCliFlagIntegration tests replicate the serve_command flag-to-config wiring logic directly via argparse.Namespace — avoids mocking 6+ lazily-imported modules inside serve_command
 - [Phase 06-cache-integration]: compression_config_getter added as optional keyword-only parameter with None default — all existing set_admin_getters() call sites unaffected
 - [Phase 06-cache-integration]: test_admin_endpoint uses TestClient with dependency_overrides[require_admin] bypass — avoids standing up full server while still testing route logic
+- [Phase 06-cache-integration]: Cosine similarity comparison: compacted vs decompressed (not original vs decompressed) -- AM token selection makes original comparison invalid
+- [Phase 06-cache-integration]: TestSlowQwen.test_qwen_round_trip threshold 0.90 applied to quantization/serialization round-trip, not AM compaction loss
 
 ### Pending Todos
 
@@ -133,6 +136,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24T02:13:24.397Z
-Stopped at: Completed 06-cache-integration-04-PLAN.md
+Last session: 2026-03-24T02:20:41.062Z
+Stopped at: Completed 06-cache-integration-05-PLAN.md (awaiting checkpoint)
 Resume file: None

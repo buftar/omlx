@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: kvtc Compression** - PCA-based byte-level storage compressor with DP quantization, zstd entropy coding, and exemption logic (completed 2026-03-19)
 - [x] **Phase 4: PCA Calibration CLI** - `omlx calibrate-kv <model>` command that generates PCA bundle required for kvtc (completed 2026-03-23)
 - [x] **Phase 5: Pipeline Assembly** - AM-to-kvtc combined pipeline with full compress/decompress round-trip and trigger wiring (completed 2026-03-23)
-- [ ] **Phase 6: Cache Integration** - Decorator-pattern integration into omlx cache system with async boundary and config flags
+- [x] **Phase 6: Cache Integration** - Decorator-pattern integration into omlx cache system with async boundary and config flags (completed 2026-03-24)
 - [ ] **Phase 7: Benchmark Suite** - Task-accuracy-gated benchmark harness with multi-model validation across four model families
 - [ ] **Phase 8: Observability** - Server metrics, admin UI stats, and feature documentation
 
@@ -162,6 +162,6 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 | 3. kvtc Compression | 3/3 | Complete   | 2026-03-19 |
 | 4. PCA Calibration CLI | 3/3 | Complete   | 2026-03-23 |
 | 5. Pipeline Assembly | 3/3 | Complete   | 2026-03-23 |
-| 6. Cache Integration | 4/5 | In Progress|  |
+| 6. Cache Integration | 5/5 | Complete   | 2026-03-24 |
 | 7. Benchmark Suite | 0/TBD | Not started | - |
 | 8. Observability | 0/TBD | Not started | - |
