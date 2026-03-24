@@ -161,10 +161,23 @@ def serve_command(args):
         # Cache explicitly disabled in settings
         paged_ssd_cache_dir = None
 
+    # Build CompressionConfig if --compression-bundle is provided
+    compression_config = None
+    if getattr(args, "compression_bundle", None) is not None:
+        from omlx.compression.config import CompressionConfig
+        compression_config = CompressionConfig(
+            enabled=True,
+            bundle_path=args.compression_bundle,
+            am_ratio=args.compression_am_ratio,
+            n_components=args.compression_n_components,
+        )
+
     # Build scheduler config for BatchedEngine
     scheduler_config = settings.to_scheduler_config()
     # Set paged SSD cache options
     scheduler_config.paged_ssd_cache_dir = paged_ssd_cache_dir
+    # Attach compression config (None when --compression-bundle not specified)
+    scheduler_config.compression_config = compression_config
     # Determine cache max size: CLI arg > settings (with auto resolution)
     if paged_ssd_cache_dir:
         if args.paged_ssd_cache_max_size:
@@ -477,6 +490,28 @@ Example directory structure:
         default=None,
         help="Number of cache blocks to pre-allocate at startup (default: 256). "
         "Higher values reduce dynamic allocation overhead for large contexts.",
+    )
+
+    # KV cache compression options
+    serve_parser.add_argument(
+        "--compression-bundle",
+        type=str,
+        default=None,
+        help="Path to PCA calibration bundle (.npz) from 'omlx calibrate-kv'. "
+             "Presence of this flag enables KV cache compression. "
+             "Requires --paged-ssd-cache-dir.",
+    )
+    serve_parser.add_argument(
+        "--compression-am-ratio",
+        type=float,
+        default=4.0,
+        help="AM compaction ratio (default: 4.0). Only used when --compression-bundle is set.",
+    )
+    serve_parser.add_argument(
+        "--compression-n-components",
+        type=int,
+        default=None,
+        help="PCA component count override. Defaults to bundle value when not set.",
     )
 
     # MCP options

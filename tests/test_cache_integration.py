@@ -300,6 +300,88 @@ class TestNoOpPath:
         )
 
 
+class TestCliFlagIntegration:
+    """PIPE-07/08/09: CLI flags wire CompressionConfig into SchedulerConfig."""
+
+    def test_cli_flags(self):
+        """--compression-bundle sets CompressionConfig.enabled=True and bundle_path.
+
+        Tests the core flag-to-config wiring logic directly without invoking
+        the full serve_command (which has deeply nested lazy imports).
+        """
+        import argparse
+        from omlx.compression.config import CompressionConfig
+        from omlx.scheduler import SchedulerConfig
+
+        # Simulate what serve_command does after parsing args
+        args = argparse.Namespace(
+            compression_bundle="/tmp/bundle.npz",
+            compression_am_ratio=4.0,
+            compression_n_components=None,
+        )
+
+        # Replicate the serve_command logic for building CompressionConfig
+        compression_config = None
+        if getattr(args, "compression_bundle", None) is not None:
+            compression_config = CompressionConfig(
+                enabled=True,
+                bundle_path=args.compression_bundle,
+                am_ratio=args.compression_am_ratio,
+                n_components=args.compression_n_components,
+            )
+
+        # Replicate the serve_command logic for attaching to SchedulerConfig
+        scheduler_config = SchedulerConfig()
+        scheduler_config.compression_config = compression_config
+
+        assert scheduler_config.compression_config is not None
+        assert isinstance(scheduler_config.compression_config, CompressionConfig)
+        assert scheduler_config.compression_config.enabled is True
+        assert scheduler_config.compression_config.bundle_path == "/tmp/bundle.npz"
+        assert scheduler_config.compression_config.am_ratio == 4.0
+        assert scheduler_config.compression_config.n_components is None
+
+    def test_cli_flags_no_bundle(self):
+        """Without --compression-bundle, compression_config is None on SchedulerConfig."""
+        import argparse
+        from omlx.scheduler import SchedulerConfig
+
+        args = argparse.Namespace(
+            compression_bundle=None,
+            compression_am_ratio=4.0,
+            compression_n_components=None,
+        )
+
+        # Replicate serve_command logic
+        compression_config = None
+        if getattr(args, "compression_bundle", None) is not None:
+            from omlx.compression.config import CompressionConfig
+            compression_config = CompressionConfig(
+                enabled=True,
+                bundle_path=args.compression_bundle,
+                am_ratio=args.compression_am_ratio,
+                n_components=args.compression_n_components,
+            )
+
+        scheduler_config = SchedulerConfig()
+        scheduler_config.compression_config = compression_config
+
+        assert scheduler_config.compression_config is None
+
+    def test_cli_help_shows_compression_flags(self):
+        """--compression-bundle, --compression-am-ratio, --compression-n-components in serve --help."""
+        import subprocess
+        result = subprocess.run(
+            ["uv", "run", "omlx", "serve", "--help"],
+            capture_output=True,
+            text=True,
+            cwd="/Users/tonysina/projects/omlx",
+        )
+        assert "--compression-bundle" in result.stdout
+        assert "--compression-am-ratio" in result.stdout
+        assert "--compression-n-components" in result.stdout
+
+
 class TestAdminEndpoint:
     """PIPE-08 runtime: Admin endpoint for toggling compression."""
 

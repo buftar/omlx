@@ -965,6 +965,11 @@ class SchedulerConfig:
     gc_cleanup_interval: int = 0  # Steps between gc.collect() calls (0=disabled)
     mlx_cache_cleanup_interval: int = 512  # Steps between mx.clear_cache() calls
 
+    # KV cache compression (Phase 6)
+    # Set to a CompressionConfig instance to enable compression.
+    # Uses string annotation to avoid circular import with omlx.compression.config.
+    compression_config: Optional["CompressionConfig"] = None  # type: ignore[type-arg]
+
 
 @dataclass
 class SchedulerOutput:
