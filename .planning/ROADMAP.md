@@ -136,7 +136,14 @@ Plans:
   4. Pipeline is validated on Qwen 2.5 7B, Llama 3.x 8B, Gemma 3 (with SWA layer detection), and DeepSeek R1
   5. Gemma 3 SWA layers are detected from model config and skipped during compression — no quality collapse at SWA layers
   6. Benchmark results are deterministic and reproducible from a single CLI invocation with a fixed random seed
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Wave 1: test scaffold + stubs (RED state, all VAL requirements)
+- [ ] 07-02-PLAN.md — Wave 2: BenchmarkRunner report structure, SWA detection, cosine_sim_kv, CLI wiring (fast tests GREEN)
+- [ ] 07-03-PLAN.md — Wave 3: Qwen 2.5 7B slow validation — VAL-02, VAL-03, VAL-04 (human checkpoint)
+- [ ] 07-04-PLAN.md — Wave 3: Llama, Gemma3, DeepSeek slow validation — VAL-05, VAL-06, VAL-07 (human checkpoint)
+- [ ] 07-05-PLAN.md — Wave 4: benchmark_compression_command CLI end-to-end + reproducibility verification (human checkpoint)
 
 ### Phase 8: Observability
 **Goal**: Operators can monitor compression effectiveness and quality via server metrics and the omlx admin UI, and users have documentation to onboard
@@ -163,5 +170,5 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 | 4. PCA Calibration CLI | 3/3 | Complete   | 2026-03-23 |
 | 5. Pipeline Assembly | 3/3 | Complete   | 2026-03-23 |
 | 6. Cache Integration | 5/5 | Complete   | 2026-03-24 |
-| 7. Benchmark Suite | 0/TBD | Not started | - |
+| 7. Benchmark Suite | 0/5 | Not started | - |
 | 8. Observability | 0/TBD | Not started | - |
