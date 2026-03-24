@@ -51,8 +51,8 @@ Requirements for the KV cache compression milestone. Each maps to roadmap phases
 - [x] **PIPE-05**: Decompression is triggered on cache miss when restoring from SSD
 - [x] **PIPE-06**: Compression integrates with omlx cache system without modifying the CacheManager ABC
 - [x] **PIPE-07**: Existing cache behavior is unchanged when compression is disabled (no-op path)
-- [ ] **PIPE-08**: Compression can be enabled/disabled at runtime via config flags
-- [ ] **PIPE-09**: Target compression ratios are configurable per deployment
+- [x] **PIPE-08**: Compression can be enabled/disabled at runtime via config flags
+- [x] **PIPE-09**: Target compression ratios are configurable per deployment
 - [x] **PIPE-10**: Decompression latency is under 10ms per layer for 8K context sequences
 
 ### Validation
@@ -138,8 +138,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PIPE-05 | Phase 5 | Complete |
 | PIPE-06 | Phase 6 | Complete |
 | PIPE-07 | Phase 6 | Complete |
-| PIPE-08 | Phase 6 | Pending |
-| PIPE-09 | Phase 6 | Pending |
+| PIPE-08 | Phase 6 | Complete |
+| PIPE-09 | Phase 6 | Complete |
 | PIPE-10 | Phase 6 | Complete |
 | VAL-01 | Phase 7 | Pending |
 | VAL-02 | Phase 7 | Pending |

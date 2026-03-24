@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-cache-integration-02-PLAN.md
-last_updated: "2026-03-24T02:03:39.661Z"
+stopped_at: Completed 06-cache-integration-03-PLAN.md
+last_updated: "2026-03-24T02:09:25.130Z"
 last_activity: 2026-03-19 — Phase 2 Plan 01 complete (AM test scaffold, RED state confirmed)
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 16
   percent: 0
 ---
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05-pipeline-assembly P03 | 10 | 1 tasks | 1 files |
 | Phase 06-cache-integration P01 | 5 | 1 tasks | 1 files |
 | Phase 06-cache-integration P02 | 10 | 2 tasks | 2 files |
+| Phase 06-cache-integration P03 | 15 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,9 @@ Recent decisions affecting current work:
 - [Phase 06-cache-integration]: Import-based RED pattern: top-level imports of missing modules guarantee collection failure before any test executes
 - [Phase 06-cache-integration]: CompressedPagedSSDCacheManager does not call super() in enabled save_block path — replicates parent flow with blob bytes at steps 6-8
 - [Phase 06-cache-integration]: load_block() returns None on any decompress() failure — cache miss semantics for decompression errors (PIPE-10)
+- [Phase 06-cache-integration]: CacheFactory uses conditional lazy import inside create_paged_ssd_cache() to pick CompressedPagedSSDCacheManager — avoids circular import and preserves zero-overhead path when compression_config=None
+- [Phase 06-cache-integration]: compression_config field added to SchedulerConfig with string annotation Optional['CompressionConfig'] = None — avoids circular import at module level
+- [Phase 06-cache-integration]: TestCliFlagIntegration tests replicate the serve_command flag-to-config wiring logic directly via argparse.Namespace — avoids mocking 6+ lazily-imported modules inside serve_command
 
 ### Pending Todos
 
@@ -126,6 +130,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24T02:03:39.659Z
-Stopped at: Completed 06-cache-integration-02-PLAN.md
+Last session: 2026-03-24T02:09:25.128Z
+Stopped at: Completed 06-cache-integration-03-PLAN.md
 Resume file: None
