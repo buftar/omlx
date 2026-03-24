@@ -386,8 +386,54 @@ class TestAdminEndpoint:
     """PIPE-08 runtime: Admin endpoint for toggling compression."""
 
     def test_admin_endpoint(self):
-        """Admin endpoint wires to runtime toggle (stub — endpoint not yet implemented)."""
-        raise NotImplementedError("admin endpoint not yet wired")
+        """POST /api/compression/config endpoint toggles CompressionConfig at runtime."""
+        from fastapi.testclient import TestClient
+        from fastapi import FastAPI, Depends
+        from omlx.admin.routes import router, set_admin_getters
+        from omlx.admin.auth import require_admin
+        from omlx.compression.config import CompressionConfig
+
+        # Create a live CompressionConfig instance
+        cfg = CompressionConfig(enabled=False, am_ratio=4.0)
+
+        # Wire the getter so the endpoint can resolve it
+        set_admin_getters(
+            state_getter=lambda: object(),
+            pool_getter=lambda: None,
+            settings_manager_getter=lambda: None,
+            global_settings_getter=lambda: None,
+            compression_config_getter=lambda: cfg,
+        )
+
+        # Build a minimal FastAPI app with the admin router, auth bypassed
+        app = FastAPI()
+        app.include_router(router)
+        app.dependency_overrides[require_admin] = lambda: True
+
+        client = TestClient(app, raise_server_exceptions=True)
+
+        # Enable compression and set am_ratio
+        resp = client.post(
+            "/admin/api/compression/config",
+            json={"enabled": True, "am_ratio": 2.0},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["success"] is True
+        assert "enabled=True" in data["runtime_applied"]
+        assert "am_ratio=2.0" in data["runtime_applied"]
+
+        # Verify live config mutated
+        assert cfg.enabled is True
+        assert cfg.am_ratio == 2.0
+
+        # Disable compression
+        resp2 = client.post(
+            "/admin/api/compression/config",
+            json={"enabled": False},
+        )
+        assert resp2.status_code == 200
+        assert cfg.enabled is False
 
 
 class TestDecompressionLatency:

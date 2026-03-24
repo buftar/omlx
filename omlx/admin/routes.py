@@ -718,6 +718,7 @@ _get_server_state = None
 _get_engine_pool = None
 _get_settings_manager = None
 _get_global_settings = None
+_get_compression_config = None  # callable -> Optional[CompressionConfig] | None
 _hf_downloader = None
 _ms_downloader = None
 _oq_manager = None
@@ -729,6 +730,7 @@ def set_admin_getters(
     pool_getter,
     settings_manager_getter,
     global_settings_getter,
+    compression_config_getter=None,
 ):
     """
     Set the getter functions for accessing server state.
@@ -741,12 +743,16 @@ def set_admin_getters(
         pool_getter: Function that returns the EnginePool instance.
         settings_manager_getter: Function that returns the ModelSettingsManager.
         global_settings_getter: Function that returns the GlobalSettings.
+        compression_config_getter: Optional callable returning the live
+            CompressionConfig (or None if compression is not configured).
     """
     global _get_server_state, _get_engine_pool, _get_settings_manager, _get_global_settings
+    global _get_compression_config
     _get_server_state = state_getter
     _get_engine_pool = pool_getter
     _get_settings_manager = settings_manager_getter
     _get_global_settings = global_settings_getter
+    _get_compression_config = compression_config_getter
     _refresh_i18n_globals()
 
 
@@ -2113,6 +2119,56 @@ async def update_global_settings(
         "message": message,
         "runtime_applied": runtime_applied,
     }
+
+
+class CompressionConfigRequest(BaseModel):
+    """Request body for POST /api/compression/config."""
+
+    enabled: Optional[bool] = None
+    am_ratio: Optional[float] = None
+
+
+@router.post("/api/compression/config")
+async def update_compression_config(
+    request: CompressionConfigRequest,
+    is_admin: bool = Depends(require_admin),
+):
+    """
+    Update compression settings at runtime.
+
+    Toggle compression on/off and update am_ratio without server restart.
+    Changes apply to new save_block() calls only — existing SSD blocks are unaffected.
+
+    Returns:
+        JSON with success status and list of runtime-applied settings.
+
+    Raises:
+        HTTPException 400: No compression config available (compression not configured at startup).
+    """
+    compression_config = _get_compression_config() if _get_compression_config else None
+
+    if compression_config is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Compression not configured. Start server with --compression-bundle to enable.",
+        )
+
+    runtime_applied = []
+
+    if request.enabled is not None:
+        compression_config.set_enabled(request.enabled)
+        runtime_applied.append(f"enabled={request.enabled}")
+
+    if request.am_ratio is not None:
+        with compression_config._lock:
+            compression_config.am_ratio = request.am_ratio
+        runtime_applied.append(f"am_ratio={request.am_ratio}")
+
+    return JSONResponse({
+        "success": True,
+        "message": "Compression config updated",
+        "runtime_applied": runtime_applied,
+    })
 
 
 # =============================================================================

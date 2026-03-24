@@ -384,11 +384,19 @@ app.include_router(mcp_router)
 # Include admin routes
 from .admin.routes import router as admin_router, set_admin_getters
 from .admin.auth import _RedirectToLogin
+def _get_compression_config_from_pool():
+    pool = get_engine_pool()
+    if pool is None:
+        return None
+    return getattr(pool._scheduler_config, "compression_config", None)
+
+
 set_admin_getters(
     get_server_state,
     get_engine_pool,
     lambda: _server_state.settings_manager,
     lambda: _server_state.global_settings,
+    compression_config_getter=_get_compression_config_from_pool,
 )
 app.include_router(admin_router)
 
