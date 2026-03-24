@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-cache-integration-03-PLAN.md
-last_updated: "2026-03-24T02:09:25.130Z"
+stopped_at: Completed 06-cache-integration-04-PLAN.md
+last_updated: "2026-03-24T02:13:24.399Z"
 last_activity: 2026-03-19 — Phase 2 Plan 01 complete (AM test scaffold, RED state confirmed)
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 17
   percent: 0
 ---
 
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06-cache-integration P01 | 5 | 1 tasks | 1 files |
 | Phase 06-cache-integration P02 | 10 | 2 tasks | 2 files |
 | Phase 06-cache-integration P03 | 15 | 2 tasks | 4 files |
+| Phase 06-cache-integration P04 | 3 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,8 @@ Recent decisions affecting current work:
 - [Phase 06-cache-integration]: CacheFactory uses conditional lazy import inside create_paged_ssd_cache() to pick CompressedPagedSSDCacheManager — avoids circular import and preserves zero-overhead path when compression_config=None
 - [Phase 06-cache-integration]: compression_config field added to SchedulerConfig with string annotation Optional['CompressionConfig'] = None — avoids circular import at module level
 - [Phase 06-cache-integration]: TestCliFlagIntegration tests replicate the serve_command flag-to-config wiring logic directly via argparse.Namespace — avoids mocking 6+ lazily-imported modules inside serve_command
+- [Phase 06-cache-integration]: compression_config_getter added as optional keyword-only parameter with None default — all existing set_admin_getters() call sites unaffected
+- [Phase 06-cache-integration]: test_admin_endpoint uses TestClient with dependency_overrides[require_admin] bypass — avoids standing up full server while still testing route logic
 
 ### Pending Todos
 
@@ -130,6 +133,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24T02:09:25.128Z
-Stopped at: Completed 06-cache-integration-03-PLAN.md
+Last session: 2026-03-24T02:13:24.397Z
+Stopped at: Completed 06-cache-integration-04-PLAN.md
 Resume file: None
