@@ -149,10 +149,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VAL-06 | Phase 7 | Complete |
 | VAL-07 | Phase 7 | Complete |
 | VAL-08 | Phase 7 | Complete |
-| OBS-01 | Phase 8 | Pending |
-| OBS-02 | Phase 8 | Pending |
-| OBS-03 | Phase 8 | Pending |
-| OBS-04 | Phase 8 | Pending |
+| OBS-01 | Phase 9 | Pending |
+| OBS-02 | Phase 9 | Pending |
+| OBS-03 | Phase 9 | Pending |
+| OBS-04 | Phase 9 | Pending |
 
 **Coverage:**
 - v1 requirements: 45 total
@@ -161,4 +161,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-18 after roadmap creation*
+*Last updated: 2026-03-25 - OBS-01..OBS-04 moved to Phase 9 for gap closure*
