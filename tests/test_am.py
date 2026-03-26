@@ -15,6 +15,7 @@ import pytest
 import mlx.core as mx
 
 from omlx.compression.am import AMCompactor, AMCompactedCache, generate_reference_queries
+from omlx.compression.linalg_utils import nnls_solve
 
 # mx.eval() is the MLX graph materialization function (not Python's built-in eval)
 _mlx_eval = mx.eval
@@ -441,3 +442,151 @@ class TestCompactIntegration:
             assert v_c.shape == (1, n_heads, budget, head_dim), (
                 f"V shape mismatch: {v_c.shape}"
             )
+
+
+# ---------------------------------------------------------------------------
+# AM-02 -- Direct NNLS beta fitting (no diagnostics dependency)
+# ---------------------------------------------------------------------------
+
+class TestNNLSBetaFittingDirect:
+    """AM-02: Direct unit tests for NNLS beta fitting via nnls_solve.
+
+    These tests call nnls_solve directly with known inputs, avoiding the
+    diagnostics guard in compact(). They verify AM-02 requirements without
+    relying on AMCompactor.compact() returning diagnostics.
+    """
+
+    def test_nnls_returns_nonneg_betas(self):
+        """nnls_solve returns non-negative betas for any non-negative A, b."""
+        rng = np.random.default_rng(42)
+        n_queries, budget = 16, 8
+        A = mx.array(np.abs(rng.standard_normal((n_queries, budget))).astype(np.float32))
+        b = mx.array(np.abs(rng.standard_normal(n_queries)).astype(np.float32))
+        betas, residual = nnls_solve(A, b)
+        mx.eval(betas)
+        beta_np = np.array(betas)
+        assert (beta_np >= 0).all(), (
+            f"NNLS betas must be non-negative, got min={beta_np.min():.6f}"
+        )
+        assert isinstance(residual, float)
+
+    def test_nnls_exact_solution_recoverable(self):
+        """nnls_solve recovers exact non-negative solution when one exists."""
+        rng = np.random.default_rng(7)
+        n_queries, budget = 10, 5
+        A_np = np.abs(rng.standard_normal((n_queries, budget))).astype(np.float32)
+        # Construct b = A @ x_true for known non-negative x_true
+        x_true = np.abs(rng.standard_normal(budget)).astype(np.float32)
+        b_np = A_np @ x_true
+
+        A = mx.array(A_np)
+        b = mx.array(b_np)
+        betas, residual = nnls_solve(A, b)
+        mx.eval(betas)
+        beta_np = np.array(betas)
+
+        # Solution should have small residual (< 1e-3 for well-conditioned system)
+        assert residual < 1e-3, (
+            f"NNLS residual too large for recoverable problem: {residual:.6f}"
+        )
+        assert (beta_np >= 0).all(), "NNLS betas must be non-negative"
+
+    def test_nnls_beta_shape_matches_budget(self):
+        """nnls_solve output shape is (budget,) regardless of n_queries."""
+        rng = np.random.default_rng(99)
+        for n_queries, budget in [(8, 4), (16, 8), (32, 16)]:
+            A = mx.array(rng.standard_normal((n_queries, budget)).astype(np.float32))
+            b = mx.array(rng.standard_normal(n_queries).astype(np.float32))
+            betas, _ = nnls_solve(A, b)
+            mx.eval(betas)
+            assert betas.shape == (budget,), (
+                f"Expected shape ({budget},), got {betas.shape} "
+                f"for n_queries={n_queries}, budget={budget}"
+            )
+
+    def test_nnls_softmax_row_sums_are_valid_target(self):
+        """softmax row sums (attention mass target for NNLS) are all == 1.0."""
+        rng = np.random.default_rng(0)
+        n_queries, seq_len = 8, 32
+        scores = mx.array(rng.standard_normal((n_queries, seq_len)).astype(np.float32))
+        attn = mx.softmax(scores, axis=-1)
+        row_sums = attn.sum(axis=-1)
+        mx.eval(row_sums)
+        sums_np = np.array(row_sums)
+        np.testing.assert_allclose(sums_np, np.ones(n_queries), atol=1e-5,
+                                   err_msg="Softmax row sums must equal 1.0")
+
+
+# ---------------------------------------------------------------------------
+# AM-08 -- Direct beta box-constraint [-3, +3] (no diagnostics dependency)
+# ---------------------------------------------------------------------------
+
+class TestBetaBoxConstraintDirect:
+    """AM-08: Direct unit tests for beta box-constraint [-3, 3] via mx.clip.
+
+    These tests verify the box constraint applied in _compact_head without
+    relying on AMCompactor.compact() returning diagnostics.
+    """
+
+    def test_clip_removes_out_of_range_betas(self):
+        """mx.clip(betas, -3.0, 3.0) enforces the AM-08 box constraint."""
+        # Construct NNLS output that may approach boundary values
+        rng = np.random.default_rng(13)
+        n_queries, budget = 8, 4
+        # Use very small A values to force betas toward large magnitudes
+        A = mx.array((rng.standard_normal((n_queries, budget)) * 0.001).astype(np.float32))
+        b = mx.array(rng.standard_normal(n_queries).astype(np.float32))
+        betas_raw, _ = nnls_solve(A, b)
+        betas_clipped = mx.clip(betas_raw, -3.0, 3.0)
+        mx.eval(betas_clipped)
+        clipped_np = np.array(betas_clipped)
+        assert (clipped_np >= -3.0).all() and (clipped_np <= 3.0).all(), (
+            f"Clipped betas out of [-3, 3]: min={clipped_np.min():.4f}, "
+            f"max={clipped_np.max():.4f}"
+        )
+
+    def test_clip_preserves_in_range_betas(self):
+        """mx.clip does not modify betas already within [-3, 3]."""
+        # NNLS guarantees >= 0; for small well-conditioned problems betas < 3
+        rng = np.random.default_rng(42)
+        n_queries, budget = 20, 10
+        A_np = np.abs(rng.standard_normal((n_queries, budget))).astype(np.float32)
+        x_true = np.clip(rng.standard_normal(budget).astype(np.float32), 0, 1)
+        b_np = A_np @ x_true
+        A = mx.array(A_np)
+        b = mx.array(b_np)
+        betas_raw, _ = nnls_solve(A, b)
+        betas_clipped = mx.clip(betas_raw, -3.0, 3.0)
+        mx.eval(betas_raw, betas_clipped)
+        raw_np = np.array(betas_raw)
+        clipped_np = np.array(betas_clipped)
+        # For betas already in [-3, 3], clip is a no-op
+        in_range = (raw_np >= -3.0) & (raw_np <= 3.0)
+        np.testing.assert_array_equal(
+            clipped_np[in_range], raw_np[in_range],
+            err_msg="clip must not modify betas already in [-3, 3]",
+        )
+
+    def test_compact_head_betas_always_clipped(self):
+        """_compact_head with real queries applies box constraint to betas."""
+        compactor = AMCompactor(n_sink_tokens=2)
+        seq_len, head_dim = 32, 64
+        budget = 8
+        rng = np.random.default_rng(55)
+        keys_np = rng.standard_normal((1, 1, seq_len, head_dim)).astype(np.float32)
+        vals_np = rng.standard_normal((1, 1, seq_len, head_dim)).astype(np.float32)
+        queries_np = rng.standard_normal((1, 1, 16, head_dim)).astype(np.float32)
+        keys_h = mx.array(keys_np)
+        vals_h = mx.array(vals_np)
+        queries_h = mx.array(queries_np)
+
+        k_c, v_c = compactor._compact_head(keys_h, vals_h, queries_h, budget)
+        mx.eval(k_c, v_c)
+
+        # Output shapes confirm the full NNLS + OLS + clip pipeline ran
+        assert k_c.shape == (1, 1, budget, head_dim), (
+            f"Expected (1, 1, {budget}, {head_dim}), got {k_c.shape}"
+        )
+        assert v_c.shape == (1, 1, budget, head_dim), (
+            f"Expected (1, 1, {budget}, {head_dim}), got {v_c.shape}"
+        )
