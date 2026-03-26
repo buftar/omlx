@@ -192,7 +192,7 @@ Plans:
   1. TestCalibrationTiming slow tests marked as xfail or fixed
   2. All VALIDATION.md files have nyquist_compliant: true
   3. All tests pass with `pytest -m "not slow"`
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 10-01-PLAN.md — Wave 0: Test scaffold and fix plan (RED state)
@@ -214,4 +214,4 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 | 7. Benchmark Suite | 5/5 | Complete | 2026-03-24 |
 | 8. Observability | 3/3 | Complete | 2026-03-25 |
 | 9. Observability Gap Closure | 2/2 | Complete | 2026-03-25 |
-| 10. Test Suite Fixes | 1/1 | Complete | 2026-03-25 |
+| 10. Test Suite Fixes | 1/1 | Complete    | 2026-03-26 |
