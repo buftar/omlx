@@ -49,19 +49,50 @@ created: 2026-03-25
 
 ---
 
-## Test Plan
+## Test Infrastructure
 
-```bash
-# Run Phase 9 tests (Wave 0)
-pytest tests/test_observability.py -v -m "not slow"
+| Property | Value |
+|----------|-------|
+| **Framework** | pytest 9.x |
+| **Config file** | pytest.ini (root) |
+| **Quick run command** | `pytest tests/test_observability.py -v -m "not slow"` |
+| **Full suite command** | `pytest tests/test_observability.py -v` |
+| **Estimated runtime** | ~2 seconds |
 
-# Check documentation files exist
-ls docs/compression/
+---
 
-# Check admin UI files exist
-ls omlx/admin/templates/dashboard/_*.html
-ls omlx/admin/static/js/dashboard.js
-```
+## Per-Task Verification Map
+
+| Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
+|---------|------|------|-------------|-----------|-------------------|-------------|--------|
+| 09-01-01 | 01 | 0 | OBS-04 | unit | `pytest tests/test_observability.py -v -k "test_metrics_visible_in_admin_ui"` | ✅ W0 | ✅ green |
+| 09-01-02 | 01 | 0 | Integration | unit | `pytest tests/test_observability.py -v -k "test_pipeline_compress"` | ✅ W0 | ✅ green |
+| 09-02-01 | 02 | 0 | OBS-01 | unit | `pytest tests/test_observability.py -v -k "test_compression_ratio_metric"` | ✅ W0 | ✅ green |
+| 09-02-02 | 02 | 0 | OBS-02 | unit | `pytest tests/test_observability.py -v -k "test_decompression_latency_metric"` | ✅ W0 | ✅ green |
+| 09-02-03 | 02 | 0 | OBS-03 | unit | `pytest tests/test_observability.py -v -k "test_cache_hit_miss_metrics"` | ✅ W0 | ✅ green |
+| 09-02-04 | 02 | 0 | OBS-01 | unit | `pytest tests/test_observability.py -v -k "test_admin_stats_endpoint"` | ✅ W0 | ✅ green |
+
+*Status: ✅ green · ❌ red · ⚠️ flaky*
+
+---
+
+## Wave 0 Requirements
+
+- [x] `tests/test_observability.py` — OBS-01, OBS-02, OBS-03, OBS-04 coverage
+- [x] `omlx/server_metrics.py` — ServerMetrics with compression fields
+- [x] `omlx/cache/stats.py` — CompressedCacheStats class
+
+*If none: "Existing infrastructure covers all phase requirements."*
+
+---
+
+## Manual-Only Verifications
+
+| Behavior | Requirement | Why Manual | Test Instructions |
+|----------|-------------|------------|-------------------|
+| Admin UI dashboard displays compression metrics | OBS-03 | Browser-based UI inspection required | Open admin dashboard at http://localhost:8000/admin, verify compression ratio and stats cards are visible |
+
+*If none: "All phase behaviors have automated verification."*
 
 ---
 
@@ -69,7 +100,7 @@ ls omlx/admin/static/js/dashboard.js
 
 ```
 pytest tests/test_observability.py -v -m "not slow"
-======================== 13 passed, 1 deselected in 0.73s ========================
+======================== 13 passed, 1 deselected in 0.49s ========================
 ```
 
 ---
@@ -79,6 +110,9 @@ pytest tests/test_observability.py -v -m "not slow"
 - [x] All fast tests GREEN (Wave 0)
 - [x] Documentation files created (Wave 0)
 - [x] Benchmark metrics integration verified (Wave 0)
+- [x] OBS-01: Compression ratio metric recorded and exposed via admin endpoint
+- [x] OBS-02: Decompression latency tracked with ServerMetrics
+- [x] OBS-03: Cache hit/miss metrics tracked via CompressedCacheStats
 - [ ] Compression settings card in admin dashboard (Wave 1)
 - [ ] Compression stats card in admin dashboard (Wave 1)
 
@@ -100,6 +134,7 @@ pytest tests/test_observability.py -v -m "not slow"
 | File | Change |
 |------|--------|
 | omlx/compression/benchmark.py | Added CompressionMetrics dataclass, compression_metrics field |
+| tests/test_observability.py | Created with OBS-01/02/03/04 test coverage |
 
 ---
 
@@ -118,8 +153,16 @@ pytest tests/test_observability.py -v -m "not slow"
 
 - [x] All tasks have automated verify (Wave 0)
 - [x] Sampling continuity: no 3 consecutive tasks without automated verify (Wave 0)
-- [x] Wave 0 covers all requirements (OBS-04, Benchmark metrics)
+- [x] Wave 0 covers all requirements (OBS-01, OBS-02, OBS-03, OBS-04)
 - [x] Feedback latency < 20s (Wave 0)
 - [x] nyquist_compliant: true set in frontmatter
 
 **Status:** Wave 0 complete. Wave 1 (Admin UI) ready for implementation.
+
+## Validation Audit 2026-03-26
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 3 (OBS-01, OBS-02, OBS-03 mapped to tests) |
+| Escalated | 0 |
