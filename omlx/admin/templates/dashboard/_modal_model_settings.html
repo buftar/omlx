@@ -436,28 +436,9 @@
                                                 <p class="mt-2 text-xs text-neutral-400">{{ t('modal.model_settings.compression_am_ratio_hint') }}</p>
                                             </div>
 
-                                            <!-- Compression Stats -->
-                                            <div class="grid grid-cols-2 gap-3">
-                                                <div class="p-3 bg-white rounded-lg border border-neutral-200">
-                                                    <p class="text-xs text-neutral-500 mb-1">{{ t('modal.model_settings.compression_ratio') }}</p>
-                                                    <p class="text-lg font-bold text-neutral-900" x-text="modelSettings.compression_stats?.compression_ratio ? (modelSettings.compression_stats.compression_ratio.toFixed(2) + 'x') : '-'"></p>
-                                                </div>
-                                                <div class="p-3 bg-white rounded-lg border border-neutral-200">
-                                                    <p class="text-xs text-neutral-500 mb-1">{{ t('modal.model_settings.compression_latency') }}</p>
-                                                    <p class="text-lg font-bold text-neutral-900" x-text="modelSettings.compression_stats?.avg_decompression_latency_ms ? (modelSettings.compression_stats.avg_decompression_latency_ms.toFixed(1) + ' ms') : '-'"></p>
-                                                </div>
-                                            </div>
-
-                                            <!-- Success/Failure Counts -->
-                                            <div class="grid grid-cols-2 gap-3">
-                                                <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-100">
-                                                    <span class="text-xs font-medium text-green-700">{{ t('modal.model_settings.compression_success') }}</span>
-                                                    <span class="text-xs font-mono text-green-800" x-text="modelSettings.compression_stats?.compression_success_count || 0"></span>
-                                                </div>
-                                                <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
-                                                    <span class="text-xs font-medium text-red-700">{{ t('modal.model_settings.compression_failure') }}</span>
-                                                    <span class="text-xs font-mono text-red-800" x-text="modelSettings.compression_stats?.compression_failure_count || 0"></span>
-                                                </div>
+                                            <!-- Paper Links -->
+                                            <div class="pt-1">
+                                                <p class="text-xs text-neutral-400">Based on: <a href="https://arxiv.org/abs/2511.01815" target="_blank" class="text-neutral-500 hover:text-neutral-700 underline underline-offset-2">KVTC</a> · <a href="https://arxiv.org/abs/2602.16284" target="_blank" class="text-neutral-500 hover:text-neutral-700 underline underline-offset-2">Attention Matching</a></p>
                                             </div>
                                         </div>
 

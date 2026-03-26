@@ -102,6 +102,7 @@
                 compression_available: true,
                 compression_stats: null,
             },
+            compressionStatus: null,
             savingModelSettings: false,
             loadingGenDefaults: false,
 
@@ -404,7 +405,7 @@
 
             async handleMainTabChange(value) {
                 if (value === 'status') {
-                    await this.loadStats();
+                    await Promise.all([this.loadStats(), this.loadCompressionStatus()]);
                     this.startStatsRefresh();
                 } else {
                     this.stopStatsRefresh();
@@ -1082,20 +1083,24 @@
 
             // Compression API methods
             async loadCompressionStatus() {
-                if (!this.selectedModel) return;
                 try {
                     const response = await fetch('/admin/api/compression/status');
                     if (response.ok) {
                         const data = await response.json();
-                        // Update compression stats in modelSettings
-                        this.modelSettings.compression_stats = {
-                            compression_ratio: data.compression_ratio || 0.0,
-                            avg_decompression_latency_ms: data.avg_decompression_latency_ms || 0.0,
-                            compression_success_count: data.compression_success_count || 0,
-                            compression_failure_count: data.compression_failure_count || 0,
-                            decompression_success_count: data.decompression_success_count || 0,
-                            decompression_failure_count: data.decompression_failure_count || 0,
-                        };
+                        // Update global compression status for dashboard card
+                        this.compressionStatus = data;
+                        // Update modal settings if open
+                        if (this.selectedModel) {
+                            this.modelSettings.compression_am_ratio = data.am_ratio || 4.0;
+                            this.modelSettings.compression_stats = {
+                                compression_ratio: data.compression_ratio || 0.0,
+                                avg_decompression_latency_ms: data.avg_decompression_latency_ms || 0.0,
+                                compression_success_count: data.compression_success_count || 0,
+                                compression_failure_count: data.compression_failure_count || 0,
+                                decompression_success_count: data.decompression_success_count || 0,
+                                decompression_failure_count: data.decompression_failure_count || 0,
+                            };
+                        }
                     }
                 } catch (err) {
                     console.error('Failed to load compression status:', err);
