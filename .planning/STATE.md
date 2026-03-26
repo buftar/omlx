@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 11-tech-debt-cleanup-01-PLAN.md (Wave 0 test suite cleanup)
-last_updated: "2026-03-26T06:48:05.078Z"
+stopped_at: Completed 11-tech-debt-cleanup-03-PLAN.md (OBS-05 gap closure)
+last_updated: "2026-03-26T13:34:09.571Z"
 last_activity: 2026-03-25 — Phase 9 complete (OBS-04 docs + benchmark metrics + admin UI)
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 29
-  completed_plans: 29
+  total_phases: 11
+  completed_phases: 11
+  total_plans: 32
+  completed_plans: 33
   percent: 100
 ---
 
@@ -82,6 +82,7 @@ Progress: [███████████████████████
 | Phase 11-tech-debt-cleanup P02 | 3 | 2 tasks | 2 files |
 | Phase 11-tech-debt-cleanup P01 | 2 | 3 tasks | 3 files |
 | Phase 11-tech-debt-cleanup P01 | 9 | 3 tasks | 3 files |
+| Phase 11-tech-debt-cleanup P03 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -151,6 +152,8 @@ Recent decisions affecting current work:
 - [Phase 11-tech-debt-cleanup]: pytest.importorskip used in TestCalibrationTiming as mlx_lm guard — avoids xfail while preserving skip semantics when deps unavailable
 - [Phase 11-tech-debt-cleanup]: CAL-05 xfail removal: pytest.importorskip replaces xfail+NotImplementedError -- run_calibration is fully implemented
 - [Phase 11-tech-debt-cleanup]: AM-02/AM-08 direct tests: import nnls_solve directly to bypass diagnostics=None guard in AMCompactor.compact()
+- [Phase 11-tech-debt-cleanup]: am_ratio and n_components added inside existing if compression_config: guard — callers with no config getter are unaffected
+- [Phase 11-tech-debt-cleanup]: n_components=None coerced to 0 via or 0 operator — admin dashboard receives integer 0 for on-the-fly mode
 
 ### Pending Todos
 
@@ -164,6 +167,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-26T06:48:05.076Z
-Stopped at: Completed 11-tech-debt-cleanup-01-PLAN.md (Wave 0 test suite cleanup)
+Last session: 2026-03-26T13:34:09.568Z
+Stopped at: Completed 11-tech-debt-cleanup-03-PLAN.md (OBS-05 gap closure)
 Resume file: None

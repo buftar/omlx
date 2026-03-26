@@ -202,7 +202,7 @@ Plans:
 **Goal:** Address remaining tech debt items from v1.0 audit to achieve clean milestone completion
 **Depends on:** Phase 10
 **Requirements:** OBS-01, OBS-02, OBS-03, OBS-05
-**Plans:** 3 plans
+**Plans:** 4/3 plans complete
 
 Plans:
 - [x] 11-01-PLAN.md — Wave 0: Test suite cleanup (CAL-05 xfail removal, AM-02/AM-08 direct tests, Nyquist compliance flags)
@@ -227,4 +227,4 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 | 8. Observability | 3/3 | Complete | 2026-03-25 |
 | 9. Observability Gap Closure | 2/2 | Complete | 2026-03-25 |
 | 10. Test Suite Fixes | 1/1 | Complete    | 2026-03-26 |
-| 11. Tech Debt Cleanup | 3/3 | In Progress | 2026-03-26 |
+| 11. Tech Debt Cleanup | 4/3 | Complete   | 2026-03-26 |
