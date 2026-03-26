@@ -2719,6 +2719,8 @@ async def get_compression_status(
     compression_config = _get_compression_config()
     if compression_config:
         payload["enabled"] = compression_config.enabled
+        payload["am_ratio"] = compression_config.am_ratio
+        payload["n_components"] = compression_config.n_components or 0
 
     # Add stats if we have compression stats
     if compression_stats and isinstance(compression_stats, CompressedCacheStats):

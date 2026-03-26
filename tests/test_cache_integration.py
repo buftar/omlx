@@ -436,6 +436,59 @@ class TestAdminEndpoint:
         assert cfg.enabled is False
 
 
+class TestCompressionStatusPayload:
+    """OBS-05: GET /admin/api/compression/status returns am_ratio and n_components."""
+
+    def _make_client(self, cfg):
+        from fastapi.testclient import TestClient
+        from fastapi import FastAPI
+        from omlx.admin.routes import router, set_admin_getters
+        from omlx.admin.auth import require_admin
+        app = FastAPI()
+        app.include_router(router)
+        app.dependency_overrides[require_admin] = lambda: True
+        set_admin_getters(
+            state_getter=lambda: object(),
+            pool_getter=lambda: None,
+            settings_manager_getter=lambda: None,
+            global_settings_getter=lambda: None,
+            compression_config_getter=lambda: cfg,
+        )
+        return TestClient(app, raise_server_exceptions=True)
+
+    def test_status_returns_am_ratio(self):
+        """am_ratio from CompressionConfig appears in /status payload."""
+        from omlx.compression.config import CompressionConfig
+        cfg = CompressionConfig(enabled=True, am_ratio=8.0)
+        client = self._make_client(cfg)
+        resp = client.get("/admin/api/compression/status")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert "am_ratio" in data, f"am_ratio missing from payload: {data}"
+        assert data["am_ratio"] == 8.0
+
+    def test_status_returns_n_components_integer(self):
+        """n_components=32 appears in /status payload as integer 32."""
+        from omlx.compression.config import CompressionConfig
+        cfg = CompressionConfig(enabled=True, am_ratio=4.0, n_components=32)
+        client = self._make_client(cfg)
+        resp = client.get("/admin/api/compression/status")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert "n_components" in data, f"n_components missing from payload: {data}"
+        assert data["n_components"] == 32
+
+    def test_status_coerces_none_n_components_to_zero(self):
+        """n_components=None in config is coerced to 0 in the payload."""
+        from omlx.compression.config import CompressionConfig
+        cfg = CompressionConfig(enabled=True, am_ratio=4.0, n_components=None)
+        client = self._make_client(cfg)
+        resp = client.get("/admin/api/compression/status")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data.get("n_components") == 0
+
+
 class TestSlowQwen:
     """PIPE-10: Real Qwen 2.5 7B round-trip: compress->save->load->decompress."""
 
