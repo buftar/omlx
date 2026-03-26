@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 09-observability-gap-closure-02-PLAN.md (Wave 1 - Admin UI)
-last_updated: "2026-03-26T03:58:13.457Z"
+stopped_at: Completed 11-tech-debt-cleanup-02-PLAN.md (Admin UI Dashboard)
+last_updated: "2026-03-26T06:42:16.578Z"
 last_activity: 2026-03-25 — Phase 9 complete (OBS-04 docs + benchmark metrics + admin UI)
 progress:
   total_phases: 10
@@ -79,6 +79,7 @@ Progress: [███████████████████████
 | Phase 09-observability-gap-closure P01 | 20 | 2 tasks | 3 files |
 | Phase 09-observability-gap-closure P02 | 15 | 4 tasks | 3 files |
 | Phase 10-test-suite-fixes P01 | 5 | 2 tasks | 2 files |
+| Phase 11-tech-debt-cleanup P02 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,7 @@ Recent decisions affecting current work:
 - [Phase 07-benchmark-suite]: detect_swa_layers() returns empty set() for non-Gemma3 models to avoid config.json errors
 - [Phase 07-benchmark-suite]: cosine_sim_kv() uses float32 conversion and 1e-8 epsilon for numerical stability
 - [Phase 07-benchmark-suite]: run_benchmark(tasks=[]) returns bare report immediately without model loading (fast-path)
+- [Phase 11-tech-debt-cleanup]: admin_dashboard.py owns only API fetching/data shaping — no PyObjC, NSMenuItem construction stays in app.py
 
 ### Pending Todos
 
@@ -156,6 +158,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-26T01:45:00.000Z
-Stopped at: Completed Phase 11 tech debt cleanup scaffold (plans created, ROADMAP/REQUIREMENTS updated)
+Last session: 2026-03-26T06:42:16.575Z
+Stopped at: Completed 11-tech-debt-cleanup-02-PLAN.md (Admin UI Dashboard)
 Resume file: None
