@@ -297,18 +297,57 @@ class TestHeadEntropy:
 
 
 @pytest.mark.slow
-@pytest.mark.xfail(reason="Real model calibration timing requires model on disk")
 class TestCalibrationTiming:
-    """CAL-05: Full calibration timing and determinism (slow -- requires real model)."""
+    """CAL-05: Full calibration timing and determinism (slow -- requires real model).
 
-    def test_full_calibration_timing(self):
-        pytest.raises(NotImplementedError, run_calibration,
-                      model_path="Qwen/Qwen2.5-7B-Instruct",
-                      n_components=64, n_groups=None,
-                      bits_per_token=4.0, output_path=None)
+    These tests require a real model on disk (mlx_lm must be installed and the
+    model must be downloaded). They are excluded from CI fast runs via the slow
+    marker. Run with: pytest -m slow tests/test_calibrator.py -v
+    """
 
-    def test_determinism(self):
-        pytest.raises(NotImplementedError, run_calibration,
-                      model_path="Qwen/Qwen2.5-7B-Instruct",
-                      n_components=64, n_groups=None,
-                      bits_per_token=4.0, output_path=None)
+    def test_full_calibration_timing(self, tmp_path):
+        """run_calibration() completes within 300 seconds for a 7B model."""
+        pytest.importorskip("mlx_lm", reason="mlx_lm not installed; skip CAL-05")
+        import time
+        start = time.monotonic()
+        run_calibration(
+            model_path="Qwen/Qwen2.5-7B-Instruct",
+            n_components=64,
+            n_groups=None,
+            bits_per_token=4.0,
+            output_path=str(tmp_path),
+        )
+        elapsed = time.monotonic() - start
+        assert elapsed < 300, f"Calibration too slow: {elapsed:.1f}s"
+
+    def test_determinism(self, tmp_path):
+        """Two calibration runs with the same seed produce identical bundles."""
+        pytest.importorskip("mlx_lm", reason="mlx_lm not installed; skip CAL-05")
+        out1 = tmp_path / "run1"
+        out2 = tmp_path / "run2"
+        out1.mkdir()
+        out2.mkdir()
+        run_calibration(
+            model_path="Qwen/Qwen2.5-7B-Instruct",
+            n_components=64,
+            n_groups=None,
+            bits_per_token=4.0,
+            output_path=str(out1),
+        )
+        run_calibration(
+            model_path="Qwen/Qwen2.5-7B-Instruct",
+            n_components=64,
+            n_groups=None,
+            bits_per_token=4.0,
+            output_path=str(out2),
+        )
+        bundle1_path = out1 / "kv_pca_calibration.npz"
+        bundle2_path = out2 / "kv_pca_calibration.npz"
+        bundle1 = np.load(bundle1_path)
+        bundle2 = np.load(bundle2_path)
+        assert set(bundle1.files) == set(bundle2.files), "Bundle key mismatch"
+        for key in bundle1.files:
+            np.testing.assert_allclose(
+                bundle1[key], bundle2[key], rtol=1e-5,
+                err_msg=f"Determinism failure for key={key}",
+            )
