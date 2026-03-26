@@ -7,7 +7,7 @@ metrics across different cache implementations (prefix, paged, VLM, paged SSD).
 """
 
 from dataclasses import dataclass, asdict, field
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -231,4 +231,97 @@ class PagedSSDCacheStats(BaseCacheStats):
         """Convert stats to dictionary."""
         d = super().to_dict()
         d["save_rate"] = self.save_rate
+        return d
+
+
+@dataclass
+class CompressedCacheStats(PagedSSDCacheStats):
+    """
+    Statistics for compressed cache performance.
+
+    Extends PagedSSDCacheStats with compression-specific metrics for
+    tracking AM compaction and KVTC compression efficiency.
+    """
+
+    # Compression metrics (session)
+    compression_success_count: int = 0
+    compression_failure_count: int = 0
+    decompression_success_count: int = 0
+    decompression_failure_count: int = 0
+
+    # Size tracking (bytes)
+    total_compressed_bytes: int = 0
+    total_logical_bytes: int = 0
+
+    # Latency tracking (milliseconds) - list for aggregation
+    decompression_latencies_ms: List[float] = field(default_factory=list, repr=False)
+
+    # Aggregated ratios - list for aggregation
+    compression_ratios: List[float] = field(default_factory=list, repr=False)
+
+    @property
+    def avg_compression_ratio(self) -> float:
+        """Get average compression ratio across all compressions."""
+        if not self.compression_ratios:
+            return 0.0
+        return sum(self.compression_ratios) / len(self.compression_ratios)
+
+    @property
+    def avg_decompression_latency_ms(self) -> float:
+        """Get average decompression latency in milliseconds."""
+        if not self.decompression_latencies_ms:
+            return 0.0
+        return sum(self.decompression_latencies_ms) / len(self.decompression_latencies_ms)
+
+    @property
+    def compression_ratio(self) -> float:
+        """Get overall compression ratio (logical bytes / compressed bytes)."""
+        if self.total_compressed_bytes == 0:
+            return 0.0
+        return self.total_logical_bytes / self.total_compressed_bytes
+
+    def record_compression_success(self, ratio: float, compressed_bytes: int, logical_bytes: int) -> None:
+        """Record a successful compression operation."""
+        self.compression_success_count += 1
+        self.compression_ratios.append(ratio)
+        self.total_compressed_bytes += compressed_bytes
+        self.total_logical_bytes += logical_bytes
+
+    def record_compression_failure(self) -> None:
+        """Record a failed compression operation."""
+        self.compression_failure_count += 1
+
+    def record_decompression_success(self, latency_ms: float) -> None:
+        """Record a successful decompression operation."""
+        self.decompression_success_count += 1
+        self.decompression_latencies_ms.append(latency_ms)
+
+    def record_decompression_failure(self) -> None:
+        """Record a failed decompression operation."""
+        self.decompression_failure_count += 1
+
+    def reset(self) -> None:
+        """Reset runtime statistics."""
+        super().reset()
+        self.compression_success_count = 0
+        self.compression_failure_count = 0
+        self.decompression_success_count = 0
+        self.decompression_failure_count = 0
+        self.total_compressed_bytes = 0
+        self.total_logical_bytes = 0
+        self.decompression_latencies_ms.clear()
+        self.compression_ratios.clear()
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert stats to dictionary."""
+        d = super().to_dict()
+        d["compression_success_count"] = self.compression_success_count
+        d["compression_failure_count"] = self.compression_failure_count
+        d["decompression_success_count"] = self.decompression_success_count
+        d["decompression_failure_count"] = self.decompression_failure_count
+        d["total_compressed_bytes"] = self.total_compressed_bytes
+        d["total_logical_bytes"] = self.total_logical_bytes
+        d["avg_compression_ratio"] = round(self.avg_compression_ratio, 2)
+        d["avg_decompression_latency_ms"] = round(self.avg_decompression_latency_ms, 2)
+        d["overall_compression_ratio"] = round(self.compression_ratio, 2)
         return d

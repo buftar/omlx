@@ -10,7 +10,7 @@
 
 | Check | Status |
 |-------|--------|
-| nyquist_compliant | false (not yet set) |
+| nyquist_compliant | true (frontmatter added) |
 | wave_0_complete | true (scaffold created) |
 
 ---
@@ -43,6 +43,6 @@ pytest -m slow -v
 
 ## Success Criteria
 
-- All tests pass
-- Slow tests run without errors (xfail expected for Phase 4)
-- Nyquist compliance flags set on all VALIDATION.md files
+- [ ] All tests pass
+- [ ] Slow tests run without errors (xfail expected for Phase 4)
+- [ ] Nyquist compliance flags set on all VALIDATION.md files

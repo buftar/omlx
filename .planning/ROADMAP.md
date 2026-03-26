@@ -20,8 +20,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: Cache Integration** - Decorator-pattern integration into omlx cache system with async boundary and config flags (completed 2026-03-24)
 - [x] **Phase 7: Benchmark Suite** - Task-accuracy-gated benchmark harness with multi-model validation across four model families (completed 2026-03-24)
 - [x] **Phase 8: Observability** - Server metrics, admin UI stats, and feature documentation (completed 2026-03-25)
-- [ ] **Phase 9: Observability Gap Closure** - Documentation creation and benchmark metrics extension to close OBS-04 gap (pending)
-- [ ] **Phase 10: Test Suite Fixes** - Fix stale test assertions and add Nyquist compliance flags (pending)
+- [x] **Phase 9: Observability Gap Closure** - Documentation creation, benchmark metrics extension, and admin UI dashboard to close OBS-04 gap (completed 2026-03-25)
+- [x] **Phase 10: Test Suite Fixes** - Fix stale test assertions and add Nyquist compliance flags (completed 2026-03-25)
 
 ## Phase Details
 
@@ -164,9 +164,9 @@ Plans:
 - [x] 08-03-PLAN.md — Wave 2: CompressedCacheStats class, /api/compression/status endpoint, server.py getter wiring
 
 ### Phase 9: Observability Gap Closure
-**Goal:** Close OBS-04 documentation gap and extend benchmark report with compression metrics
+**Goal:** Close OBS-04 documentation gap, extend benchmark report with compression metrics, and add admin UI dashboard
 **Depends on:** Phase 8
-**Requirements:** OBS-04, Integration: Benchmark metrics extension
+**Requirements:** OBS-04, Integration: Benchmark metrics extension, Admin UI: Compression dashboard
 **Success Criteria** (what must be TRUE):
   1. docs/compression/README.md exists with architecture overview
   2. docs/compression/CONFIGURATION.md exists with all config options
@@ -174,10 +174,13 @@ Plans:
   4. docs/compression/TROUBLESHOOTING.md exists with common failure modes
   5. BenchmarkReport includes compression_metrics field
   6. ServerMetrics integration in BenchmarkRunner verified
-**Plans:** 1 plan
+  7. Compression settings card visible in admin dashboard
+  8. Compression stats card visible in admin dashboard
+**Plans:** 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Wave 0: Documentation scaffold and benchmark metrics extension (RED state)
+- [x] 09-01-PLAN.md — Wave 0: Documentation scaffold and benchmark metrics extension (COMPLETE)
+- [ ] 09-02-PLAN.md — Wave 1: Admin UI dashboard for compression feature (RED state)
 
 ### Phase 10: Test Suite Fixes
 **Goal:** Fix stale test assertions and add Nyquist compliance flags
@@ -210,5 +213,5 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 | 6. Cache Integration | 5/5 | Complete   | 2026-03-24 |
 | 7. Benchmark Suite | 5/5 | Complete | 2026-03-24 |
 | 8. Observability | 3/3 | Complete | 2026-03-25 |
-| 9. Observability Gap Closure | 1/1 | Pending | - |
-| 10. Test Suite Fixes | 1/1 | Pending | - |
+| 9. Observability Gap Closure | 2/2 | Complete | 2026-03-25 |
+| 10. Test Suite Fixes | 1/1 | Complete | 2026-03-25 |

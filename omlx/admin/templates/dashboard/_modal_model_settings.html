@@ -396,6 +396,79 @@
                                         </div>
                                     </div>
                                 </div>
+
+                            <!-- Compression (Experimental) -->
+                            <template x-if="!DSA_MODEL_TYPES.has(selectedModel?.config_model_type || '') && !OCR_CONFIG_MODEL_TYPES.has(selectedModel?.config_model_type || '')">
+                                <div>
+                                    <h4 class="text-xs font-bold uppercase tracking-widest text-neutral-400 mt-2 mb-3">{{ t('modal.model_settings.experimental_label') }}</h4>
+                                    <div class="p-4 bg-neutral-50 rounded-xl space-y-3">
+                                        <!-- Compression Toggle -->
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="min-w-0">
+                                                <span class="text-sm font-medium text-neutral-700">{{ t('modal.model_settings.compression_label') }}</span>
+                                                <p class="text-xs text-neutral-500 mt-0.5">{{ t('modal.model_settings.compression_hint') }}</p>
+                                            </div>
+                                            <button type="button" @click="toggleCompression()"
+                                                    :class="modelSettings.compression_enabled ? 'bg-black' : 'bg-neutral-200'"
+                                                    class="relative flex-shrink-0 w-11 h-6 mt-0.5 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
+                                                    :disabled="!modelSettings.compression_available">
+                                                <span :class="modelSettings.compression_enabled ? 'translate-x-5' : 'translate-x-0'"
+                                                      class="block w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-300 absolute top-0.5 left-0.5"></span>
+                                            </button>
+                                        </div>
+
+                                        <!-- Compression Status (when enabled) -->
+                                        <div x-show="modelSettings.compression_enabled" x-transition class="pt-1 space-y-3">
+                                            <!-- AM Ratio Slider -->
+                                            <div>
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <label class="text-xs font-bold uppercase tracking-wider text-neutral-500">{{ t('modal.model_settings.compression_am_ratio') }}</label>
+                                                    <span class="text-xs font-mono text-neutral-700" x-text="(modelSettings.compression_am_ratio || 1.0).toFixed(1)"></span>
+                                                </div>
+                                                <input type="range" min="1.0" max="8.0" step="0.5"
+                                                       x-model.number="modelSettings.compression_am_ratio"
+                                                       @input="updateCompressionAmRatio()"
+                                                       :disabled="!modelSettings.compression_available"
+                                                       class="w-full h-1.5 bg-neutral-200 rounded-full appearance-none cursor-pointer
+                                                              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
+                                                              [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer
+                                                              [&::-webkit-slider-thumb]:disabled:bg-neutral-300 [&::-webkit-slider-thumb]:disabled:cursor-not-allowed">
+                                                <p class="mt-2 text-xs text-neutral-400">{{ t('modal.model_settings.compression_am_ratio_hint') }}</p>
+                                            </div>
+
+                                            <!-- Compression Stats -->
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div class="p-3 bg-white rounded-lg border border-neutral-200">
+                                                    <p class="text-xs text-neutral-500 mb-1">{{ t('modal.model_settings.compression_ratio') }}</p>
+                                                    <p class="text-lg font-bold text-neutral-900" x-text="modelSettings.compression_stats?.compression_ratio ? (modelSettings.compression_stats.compression_ratio.toFixed(2) + 'x') : '-'"></p>
+                                                </div>
+                                                <div class="p-3 bg-white rounded-lg border border-neutral-200">
+                                                    <p class="text-xs text-neutral-500 mb-1">{{ t('modal.model_settings.compression_latency') }}</p>
+                                                    <p class="text-lg font-bold text-neutral-900" x-text="modelSettings.compression_stats?.avg_decompression_latency_ms ? (modelSettings.compression_stats.avg_decompression_latency_ms.toFixed(1) + ' ms') : '-'"></p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Success/Failure Counts -->
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-100">
+                                                    <span class="text-xs font-medium text-green-700">{{ t('modal.model_settings.compression_success') }}</span>
+                                                    <span class="text-xs font-mono text-green-800" x-text="modelSettings.compression_stats?.compression_success_count || 0"></span>
+                                                </div>
+                                                <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
+                                                    <span class="text-xs font-medium text-red-700">{{ t('modal.model_settings.compression_failure') }}</span>
+                                                    <span class="text-xs font-mono text-red-800" x-text="modelSettings.compression_stats?.compression_failure_count || 0"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Not Available Message -->
+                                        <p x-show="!modelSettings.compression_available" class="text-xs text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-100">
+                                            <i data-lucide="alert-triangle" class="inline w-3.5 h-3.5 mr-1"></i>
+                                            <span x-text="t('modal.model_settings.compression_not_available')"></span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </div>
                 </div>

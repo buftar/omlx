@@ -60,6 +60,23 @@ class TestReproducibility:
         assert report1["seed"] == report2["seed"]
         assert report1["config"] == report2["config"]
 
+    @pytest.mark.slow
+    def test_same_seed_produces_same_report_with_model(self):
+        """Test that same seed produces identical reports with real model."""
+        QWEN_MODEL = "Qwen/Qwen2.5-7B-Instruct"
+
+        # Run benchmark twice with same seed
+        runner1 = BenchmarkRunner(QWEN_MODEL, seed=42, n_samples=5)
+        runner2 = BenchmarkRunner(QWEN_MODEL, seed=42, n_samples=5)
+
+        # Only run cosine_sim task for reproducibility check (faster)
+        report1 = runner1.run_benchmark(tasks=["cosine_sim"])
+        report2 = runner2.run_benchmark(tasks=["cosine_sim"])
+
+        # Same seed should produce identical cosine similarity
+        assert report1["seed"] == report2["seed"]
+        assert report1["technical_metrics"]["am_cosine_similarity"] == report2["technical_metrics"]["am_cosine_similarity"]
+
 
 class TestSwaDetection:
     """VAL-06: SWA (Sliding Window Attention) layer detection."""
@@ -138,45 +155,81 @@ class TestSlowQwen:
     @pytest.mark.slow
     def test_am_cosine_sim(self):
         """Test AM cosine similarity computation with Qwen."""
-        runner = BenchmarkRunner("Qwen/Qwen2-7B")
-        with pytest.raises(NotImplementedError):
-            runner.run_benchmark(tasks=["cosine_sim"])
+        from mlx_lm.models.cache import RotatingKVCache
+
+        QWEN_MODEL = "Qwen/Qwen2.5-7B-Instruct"
+        runner = BenchmarkRunner(QWEN_MODEL, seed=42)
+        report = runner.run_benchmark(tasks=["cosine_sim"])
+        sim = report["technical_metrics"]["am_cosine_similarity"]
+        assert sim > 0.998, f"AM cosine sim {sim:.4f} below 0.998 threshold"
+        assert report["thresholds"]["am_cosine_sim_pass"] is True
 
     @pytest.mark.slow
     def test_task_accuracy(self):
         """Test task accuracy benchmarks with Qwen."""
-        runner = BenchmarkRunner("Qwen/Qwen2-7B")
-        with pytest.raises(NotImplementedError):
-            runner.run_benchmark(tasks=["accuracy"])
+        from mlx_lm.models.cache import RotatingKVCache
+
+        QWEN_MODEL = "Qwen/Qwen2.5-7B-Instruct"
+        runner = BenchmarkRunner(QWEN_MODEL, seed=42, n_samples=50)
+        report = runner.run_benchmark(tasks=["gsm8k", "mmlu", "litm"])
+        gsm8k_delta = abs(report["quality_metrics"]["gsm8k_vanilla"] - report["quality_metrics"]["gsm8k_compressed"])
+        mmlu_delta = abs(report["quality_metrics"]["mmlu_vanilla"] - report["quality_metrics"]["mmlu_compressed"])
+        litm_delta = abs(report["quality_metrics"]["litm_vanilla"] - report["quality_metrics"]["litm_compressed"])
+        assert gsm8k_delta <= 1.0, f"GSM8K delta {gsm8k_delta:.2f} > 1.0pp"
+        assert mmlu_delta <= 1.0, f"MMLU delta {mmlu_delta:.2f} > 1.0pp"
+        assert litm_delta <= 0.05, f"LITM delta {litm_delta:.3f} > 0.05"
 
     @pytest.mark.slow
     def test_full_pipeline_runs(self):
         """Test full Qwen pipeline runs end-to-end."""
-        runner = BenchmarkRunner("Qwen/Qwen2-7B")
-        with pytest.raises(NotImplementedError):
-            runner.run_benchmark(tasks=["full"])
+        from mlx_lm.models.cache import RotatingKVCache
+
+        QWEN_MODEL = "Qwen/Qwen2.5-7B-Instruct"
+        runner = BenchmarkRunner(QWEN_MODEL, seed=42, n_samples=10)
+        report = runner.run_benchmark(tasks=["cosine_sim", "latency"])
+        assert report["schema_version"] == "1.0"
+        assert report["model"] == QWEN_MODEL
+        assert "decompression_latency_ms_per_layer" in report["technical_metrics"]
+        assert report["overall_pass"] is not None
+
+
+# Model identifiers for multi-model benchmarking
+LLAMA_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
+GEMMA_MODEL = "google/gemma-3-4b-it"
+DEEPSEEK_MODEL = "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
 
 
 class TestSlowLlama:
     """VAL-05: Llama model benchmark tests."""
 
     @pytest.mark.slow
+    @pytest.mark.skip(reason="meta-llama/Llama-3.1-8B-Instruct is a gated repo - requires Hugging Face access")
     def test_llama_pipeline_runs(self):
         """Test Llama pipeline runs end-to-end."""
-        runner = BenchmarkRunner("meta-llama/Llama-2-7b")
-        with pytest.raises(NotImplementedError):
-            runner.run_benchmark(tasks=["full"])
+        runner = BenchmarkRunner(LLAMA_MODEL, seed=42, n_samples=10)
+        report = runner.run_benchmark(tasks=["cosine_sim", "latency"])
+        assert report["schema_version"] == "1.0"
+        assert report["model"] == LLAMA_MODEL
+        assert "am_cosine_similarity" in report["technical_metrics"]
+        # Llama threshold: 0.95 (not 0.998 which is for Qwen)
+        assert report["technical_metrics"]["am_cosine_similarity"] > 0.95
+        assert report["overall_pass"] is not None
 
 
 class TestSlowGemma:
     """VAL-06: Gemma model SWA layer tests."""
 
     @pytest.mark.slow
+    @pytest.mark.skip(reason="google/gemma-3-4b-it is a gated repo - requires Hugging Face access")
     def test_gemma_swa_layers_skipped(self):
         """Test that Gemma SWA layers are correctly skipped."""
-        runner = BenchmarkRunner("google/gemma-7b")
-        with pytest.raises(NotImplementedError):
-            runner.run_benchmark(tasks=["swa"])
+        runner = BenchmarkRunner(GEMMA_MODEL, seed=42, n_samples=10)
+        report = runner.run_benchmark(tasks=["cosine_sim"])
+        # Gemma 3 has SWA layers — must be detected and reported
+        assert len(report["swa_layers_skipped"]) > 0, "Expected SWA layers for Gemma3"
+        assert "am_cosine_similarity" in report["technical_metrics"]
+        # Should not crash on SWA layers
+        assert report["technical_metrics"]["am_cosine_similarity"] > 0.0
 
 
 class TestSlowDeepSeek:
@@ -185,6 +238,10 @@ class TestSlowDeepSeek:
     @pytest.mark.slow
     def test_deepseek_pipeline_runs(self):
         """Test DeepSeek pipeline runs end-to-end."""
-        runner = BenchmarkRunner("deepseek-ai/DeepSeek-Coder")
-        with pytest.raises(NotImplementedError):
-            runner.run_benchmark(tasks=["full"])
+        runner = BenchmarkRunner(DEEPSEEK_MODEL, seed=42, n_samples=10)
+        report = runner.run_benchmark(tasks=["cosine_sim", "latency"])
+        assert report["schema_version"] == "1.0"
+        assert report["model"] == DEEPSEEK_MODEL
+        assert "am_cosine_similarity" in report["technical_metrics"]
+        # DeepSeek distill uses Qwen2 backbone — no SWA layers
+        assert report["swa_layers_skipped"] == []

@@ -20,7 +20,7 @@ from collections import deque
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, List, Literal
+from typing import Any, Callable, Dict, Optional, List, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
@@ -719,6 +719,7 @@ _get_engine_pool = None
 _get_settings_manager = None
 _get_global_settings = None
 _get_compression_config = None  # callable -> Optional[CompressionConfig] | None
+_compression_stats_getter = None  # callable -> CompressedCacheStats
 _hf_downloader = None
 _ms_downloader = None
 _oq_manager = None
@@ -731,6 +732,7 @@ def set_admin_getters(
     settings_manager_getter,
     global_settings_getter,
     compression_config_getter=None,
+    compression_stats_getter=None,
 ):
     """
     Set the getter functions for accessing server state.
@@ -745,14 +747,16 @@ def set_admin_getters(
         global_settings_getter: Function that returns the GlobalSettings.
         compression_config_getter: Optional callable returning the live
             CompressionConfig (or None if compression is not configured).
+        compression_stats_getter: Optional callable returning the CompressedCacheStats.
     """
     global _get_server_state, _get_engine_pool, _get_settings_manager, _get_global_settings
-    global _get_compression_config
+    global _get_compression_config, _compression_stats_getter
     _get_server_state = state_getter
     _get_engine_pool = pool_getter
     _get_settings_manager = settings_manager_getter
     _get_global_settings = global_settings_getter
     _get_compression_config = compression_config_getter
+    _compression_stats_getter = compression_stats_getter
     _refresh_i18n_globals()
 
 
@@ -794,6 +798,27 @@ def set_hf_uploader(uploader):
     """
     global _hf_uploader
     _hf_uploader = uploader
+def set_compression_stats_getter(getter: Callable[[], "CompressedCacheStats"]) -> None:
+    """Set the getter function for compression stats.
+
+    Args:
+        getter: Callable that returns the CompressedCacheStats instance.
+    """
+    global _compression_stats_getter
+    _compression_stats_getter = getter
+
+
+def _get_compression_stats() -> "CompressedCacheStats":
+    """Get compression stats via getter pattern. Must be set by server.py.
+
+    Returns:
+        CompressedCacheStats instance with current compression metrics.
+    """
+    global _compression_stats_getter
+    if _compression_stats_getter is None:
+        from ..cache.stats import CompressedCacheStats
+        return CompressedCacheStats()
+    return _compression_stats_getter()
 
 
 # =============================================================================
@@ -2535,6 +2560,33 @@ def _build_runtime_cache_observability(
             and partial_block_skips > 0
         )
 
+        # Get compression stats from getter for this model
+        compression_stats = _get_compression_stats()
+        if compression_stats and hasattr(compression_stats, "to_dict"):
+            stats_dict = compression_stats.to_dict()
+            # Filter stats for this model if model_id is available in stats
+            compression_payload = {
+                "compression_success_count": int(stats_dict.get("compression_success_count", 0) or 0),
+                "compression_failure_count": int(stats_dict.get("compression_failure_count", 0) or 0),
+                "decompression_success_count": int(stats_dict.get("decompression_success_count", 0) or 0),
+                "decompression_failure_count": int(stats_dict.get("decompression_failure_count", 0) or 0),
+                "total_compressed_bytes": int(stats_dict.get("total_compressed_bytes", 0) or 0),
+                "total_logical_bytes": int(stats_dict.get("total_logical_bytes", 0) or 0),
+                "avg_compression_ratio": float(stats_dict.get("avg_compression_ratio", 0.0) or 0.0),
+                "avg_decompression_latency_ms": float(stats_dict.get("avg_decompression_latency_ms", 0.0) or 0.0),
+            }
+        else:
+            compression_payload = {
+                "compression_success_count": 0,
+                "compression_failure_count": 0,
+                "decompression_success_count": 0,
+                "decompression_failure_count": 0,
+                "total_compressed_bytes": 0,
+                "total_logical_bytes": 0,
+                "avg_compression_ratio": 0.0,
+                "avg_decompression_latency_ms": 0.0,
+            }
+
         model_payload = {
             "id": model_id,
             "block_size": block_size,
@@ -2552,6 +2604,15 @@ def _build_runtime_cache_observability(
             "hot_cache_max_bytes": int(ssd_stats.get("hot_cache_max_bytes", 0) or 0),
             "hot_cache_size_bytes": int(ssd_stats.get("hot_cache_size_bytes", 0) or 0),
             "hot_cache_entries": int(ssd_stats.get("hot_cache_entries", 0) or 0),
+            # Compression stats
+            "compression_success_count": compression_payload["compression_success_count"],
+            "compression_failure_count": compression_payload["compression_failure_count"],
+            "decompression_success_count": compression_payload["decompression_success_count"],
+            "decompression_failure_count": compression_payload["decompression_failure_count"],
+            "total_compressed_bytes": compression_payload["total_compressed_bytes"],
+            "total_logical_bytes": compression_payload["total_logical_bytes"],
+            "avg_compression_ratio": compression_payload["avg_compression_ratio"],
+            "avg_decompression_latency_ms": compression_payload["avg_decompression_latency_ms"],
         }
 
         payload["models"].append(model_payload)
@@ -2618,6 +2679,60 @@ async def get_server_stats(
         "active_models": active_models_data,
         "runtime_cache": runtime_cache_data,
     }
+
+
+@router.get("/api/compression/status")
+async def get_compression_status(
+    model: str = "",
+    scope: str = "session",
+    is_admin: bool = Depends(require_admin),
+):
+    """Get compression-specific metrics for the Status dashboard.
+
+    Args:
+        model: Filter by model ID. Empty string returns global aggregate.
+        scope: "session" for current session, "alltime" for persisted totals.
+    """
+    from ..server_metrics import get_server_metrics
+    from ..cache.stats import CompressedCacheStats
+
+    metrics = get_server_metrics()
+    snapshot = metrics.get_snapshot(model_id=model, scope=scope)
+
+    # Get compression stats from getter
+    compression_stats = _get_compression_stats()
+
+    # Build compression status payload
+    payload = {
+        "enabled": False,
+        "compression_ratio": 0.0,
+        "avg_decompression_latency_ms": 0.0,
+        "compression_success_count": 0,
+        "compression_failure_count": 0,
+        "decompression_success_count": 0,
+        "decompression_failure_count": 0,
+        "total_compressed_bytes": 0,
+        "total_logical_bytes": 0,
+    }
+
+    # Check if compression is enabled via config
+    compression_config = _get_compression_config()
+    if compression_config:
+        payload["enabled"] = compression_config.enabled
+
+    # Add stats if we have compression stats
+    if compression_stats and isinstance(compression_stats, CompressedCacheStats):
+        stats_dict = compression_stats.to_dict()
+        payload["compression_ratio"] = stats_dict.get("avg_compression_ratio", 0.0)
+        payload["avg_decompression_latency_ms"] = stats_dict.get("avg_decompression_latency_ms", 0.0)
+        payload["compression_success_count"] = stats_dict.get("compression_success_count", 0)
+        payload["compression_failure_count"] = stats_dict.get("compression_failure_count", 0)
+        payload["decompression_success_count"] = stats_dict.get("decompression_success_count", 0)
+        payload["decompression_failure_count"] = stats_dict.get("decompression_failure_count", 0)
+        payload["total_compressed_bytes"] = stats_dict.get("total_compressed_bytes", 0)
+        payload["total_logical_bytes"] = stats_dict.get("total_logical_bytes", 0)
+
+    return payload
 
 
 def _build_active_models_data() -> dict:

@@ -16,6 +16,7 @@ import time
 from typing import Any, List, Optional, Tuple
 
 from omlx.cache.paged_ssd_cache import PagedSSDCacheManager
+from omlx.cache.stats import CompressedCacheStats
 from omlx.cache.tiered_manager import TieredCacheManager
 from omlx.compression.config import CompressionConfig
 
@@ -41,6 +42,7 @@ class CompressedPagedSSDCacheManager(PagedSSDCacheManager):
         super().__init__(*args, **kwargs)
         self._compression_config = compression_config
         self.__pipeline = None  # lazy init — avoids mlx import at class load time
+        self.compression_stats = CompressedCacheStats()
 
     # ------------------------------------------------------------------
     # Lazy pipeline property
@@ -130,11 +132,20 @@ class CompressedPagedSSDCacheManager(PagedSSDCacheManager):
             blob_arr = mx.array(np.frombuffer(blob.compressed, dtype=np.uint8))
             mx.eval(blob_arr)
             tensors_raw = {"compressed_blob": _extract_tensor_bytes(blob_arr)}
+            # Track compression metrics
+            compressed_size = len(blob.compressed)
+            logical_size = blob.logical_seq_len * len(cache_data) * 2  # 2 bytes per float16
+            self.compression_stats.compression_success_count += 1
+            self.compression_stats.total_compressed_bytes += compressed_size
+            self.compression_stats.total_logical_bytes += logical_size
+            if blob.compaction_ratio is not None and blob.compaction_ratio > 0:
+                self.compression_stats.compression_ratios.append(blob.compaction_ratio)
         except Exception as exc:
             logger.error(
                 f"Compression failed for block {block_hash.hex()[:16]}: {exc}; "
                 f"falling back to uncompressed save"
             )
+            self.compression_stats.compression_failure_count += 1
             return super().save_block(
                 block_hash,
                 cache_data,
@@ -152,6 +163,7 @@ class CompressedPagedSSDCacheManager(PagedSSDCacheManager):
             "created_at": str(time.time()),
             "compressed": "true",
             "logical_seq_len": str(blob.logical_seq_len),
+            "compaction_ratio": str(blob.compaction_ratio) if blob.compaction_ratio is not None else "1.0",
         }
 
         # Step 9: build block metadata
@@ -232,12 +244,16 @@ class CompressedPagedSSDCacheManager(PagedSSDCacheManager):
                 try:
                     from omlx.compression.pipeline import PipelineBlob
 
+                    start_time = time.perf_counter()
                     blob = PipelineBlob(
                         compressed=raw_bytes,
                         logical_seq_len=int(entry["file_metadata"]["logical_seq_len"]),
-                        compaction_ratio=1.0,
+                        compaction_ratio=float(entry["file_metadata"].get("compaction_ratio", "1.0")),
                     )
                     result = self._pipeline.decompress(blob)
+                    decompression_ms = (time.perf_counter() - start_time) * 1000
+                    self.compression_stats.decompression_success_count += 1
+                    self.compression_stats.decompression_latencies_ms.append(decompression_ms)
                     self._index.touch(block_hash)
                     self._stats["loads"] += 1
                     self._stats["hits"] += 1
@@ -248,6 +264,7 @@ class CompressedPagedSSDCacheManager(PagedSSDCacheManager):
                         f"Decompression failed (hot cache) for "
                         f"{block_hash.hex()[:16]}: {exc}"
                     )
+                    self.compression_stats.decompression_failure_count += 1
                     return None
             else:
                 # Not compressed — delegate to parent (which will re-check hot cache)
@@ -277,15 +294,19 @@ class CompressedPagedSSDCacheManager(PagedSSDCacheManager):
                 import numpy as np
                 from omlx.compression.pipeline import PipelineBlob
 
+                start_time = time.perf_counter()
                 blob_arr = arrays["compressed_blob"]
                 mx.eval(blob_arr)
                 raw_bytes = bytes(memoryview(np.array(blob_arr)))
                 blob = PipelineBlob(
                     compressed=raw_bytes,
                     logical_seq_len=int(file_metadata["logical_seq_len"]),
-                    compaction_ratio=1.0,
+                    compaction_ratio=float(file_metadata.get("compaction_ratio", "1.0")),
                 )
                 result = self._pipeline.decompress(blob)
+                decompression_ms = (time.perf_counter() - start_time) * 1000
+                self.compression_stats.decompression_success_count += 1
+                self.compression_stats.decompression_latencies_ms.append(decompression_ms)
                 self._index.touch(block_hash)
                 self._stats["loads"] += 1
                 return result
@@ -293,6 +314,7 @@ class CompressedPagedSSDCacheManager(PagedSSDCacheManager):
                 logger.error(
                     f"Decompression failed (disk) for {block_hash.hex()[:16]}: {exc}"
                 )
+                self.compression_stats.decompression_failure_count += 1
                 return None
         else:
             # Not compressed — fall through to parent's full disk reconstruction

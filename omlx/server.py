@@ -391,12 +391,27 @@ def _get_compression_config_from_pool():
     return getattr(pool._scheduler_config, "compression_config", None)
 
 
+def _get_compression_stats_from_pool():
+    """Get compression stats from the engine pool's cache manager."""
+    pool = get_engine_pool()
+    if pool is None:
+        return None
+    # Try to get stats from scheduler's paged_ssd_cache_manager
+    scheduler = getattr(pool, "_scheduler_config", None)
+    if scheduler is not None:
+        cache_manager = getattr(scheduler, "paged_ssd_cache_manager", None)
+        if cache_manager is not None:
+            return getattr(cache_manager, "compression_stats", None)
+    return None
+
+
 set_admin_getters(
     get_server_state,
     get_engine_pool,
     lambda: _server_state.settings_manager,
     lambda: _server_state.global_settings,
     compression_config_getter=_get_compression_config_from_pool,
+    compression_stats_getter=_get_compression_stats_from_pool,
 )
 app.include_router(admin_router)
 

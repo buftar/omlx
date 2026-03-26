@@ -12,7 +12,7 @@ import logging
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,14 @@ class ServerMetrics:
         self._alltime_prefill_duration: float = 0.0
         self._alltime_generation_duration: float = 0.0
         self._alltime_per_model: Dict[str, Dict[str, Any]] = {}
+
+        # Compression metrics (session)
+        self._compression_ratios: List[float] = []
+        self._decompression_latencies: List[float] = []
+
+        # Compression metrics (all-time)
+        self._alltime_compression_ratios: List[float] = []
+        self._alltime_decompression_latencies: List[float] = []
 
         self._start_time = time.time()
         self._last_save_time = time.time()
@@ -145,6 +153,24 @@ class ServerMetrics:
             finally:
                 self._lock.acquire()
 
+    def record_compression_ratio(self, ratio: float) -> None:
+        """Record a compression ratio (AM compaction ratio). Thread-safe."""
+        with self._lock:
+            if not hasattr(self, "_compression_ratios"):
+                self._compression_ratios = []
+                self._alltime_compression_ratios = []
+            self._compression_ratios.append(ratio)
+            self._alltime_compression_ratios.append(ratio)
+
+    def record_decompression_latency(self, latency_ms: float) -> None:
+        """Record a decompression latency in milliseconds. Thread-safe."""
+        with self._lock:
+            if not hasattr(self, "_decompression_latencies"):
+                self._decompression_latencies = []
+                self._alltime_decompression_latencies = []
+            self._decompression_latencies.append(latency_ms)
+            self._alltime_decompression_latencies.append(latency_ms)
+
     def record_request_complete(
         self,
         prompt_tokens: int,
@@ -207,6 +233,8 @@ class ServerMetrics:
         prefill_dur: float,
         gen_dur: float,
         uptime: float,
+        compression_ratios: Optional[List[float]] = None,
+        decompression_latencies: Optional[List[float]] = None,
     ) -> Dict[str, Any]:
         """Build a metrics snapshot dict from raw values."""
         actual_processed = prompt - cached
@@ -215,6 +243,16 @@ class ServerMetrics:
         )
         avg_generation_tps = completion / gen_dur if gen_dur > 0 else 0.0
         cache_efficiency = (cached / prompt * 100) if prompt > 0 else 0.0
+
+        # Compression metrics
+        cr = compression_ratios if compression_ratios is not None else self._compression_ratios
+        dl = decompression_latencies if decompression_latencies is not None else self._decompression_latencies
+        compression_ratio = (
+            sum(cr) / len(cr) if cr else 0.0
+        )
+        decompression_latency = (
+            sum(dl) / len(dl) if dl else 0.0
+        )
 
         return {
             "total_tokens_served": prompt + completion,
@@ -226,6 +264,8 @@ class ServerMetrics:
             "avg_prefill_tps": round(avg_prefill_tps, 1),
             "avg_generation_tps": round(avg_generation_tps, 1),
             "uptime_seconds": round(uptime, 1),
+            "compression_ratio": round(compression_ratio, 2),
+            "avg_decompression_latency_ms": round(decompression_latency, 2),
         }
 
     def get_snapshot(
@@ -243,6 +283,9 @@ class ServerMetrics:
             uptime = now - self._start_time
 
             if scope == "alltime":
+                # Use all-time compression metrics
+                cr = self._alltime_compression_ratios
+                dl = self._alltime_decompression_latencies
                 if model_id:
                     m = self._alltime_per_model.get(model_id)
                     if m:
@@ -254,8 +297,10 @@ class ServerMetrics:
                             m["prefill_duration"],
                             m["generation_duration"],
                             uptime,
+                            cr,
+                            dl,
                         )
-                    return self._build_snapshot(0, 0, 0, 0, 0.0, 0.0, uptime)
+                    return self._build_snapshot(0, 0, 0, 0, 0.0, 0.0, uptime, cr, dl)
                 return self._build_snapshot(
                     self._alltime_prompt_tokens,
                     self._alltime_completion_tokens,
@@ -264,9 +309,13 @@ class ServerMetrics:
                     self._alltime_prefill_duration,
                     self._alltime_generation_duration,
                     uptime,
+                    cr,
+                    dl,
                 )
 
             # scope == "session" (default)
+            cr = self._compression_ratios
+            dl = self._decompression_latencies
             if model_id:
                 m = self._per_model.get(model_id)
                 if m:
@@ -278,8 +327,10 @@ class ServerMetrics:
                         m["prefill_duration"],
                         m["generation_duration"],
                         uptime,
+                        cr,
+                        dl,
                     )
-                return self._build_snapshot(0, 0, 0, 0, 0.0, 0.0, uptime)
+                return self._build_snapshot(0, 0, 0, 0, 0.0, 0.0, uptime, cr, dl)
 
             return self._build_snapshot(
                 self.total_prompt_tokens,
@@ -289,6 +340,8 @@ class ServerMetrics:
                 self.total_prefill_duration,
                 self.total_generation_duration,
                 uptime,
+                cr,
+                dl,
             )
 
     def clear_metrics(self) -> None:

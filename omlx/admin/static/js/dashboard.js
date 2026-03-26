@@ -96,6 +96,11 @@
                 enableToolResultLimit: false,
                 max_tool_result_tokens: null,
                 ctKwargEntries: [],
+                // Compression settings
+                compression_enabled: false,
+                compression_am_ratio: 4.0,
+                compression_available: true,
+                compression_stats: null,
             },
             savingModelSettings: false,
             loadingGenDefaults: false,
@@ -893,6 +898,11 @@
                     }
                 }
                 const isOcr = OCR_CONFIG_MODEL_TYPES.has(model.config_model_type || '');
+                const isDsa = DSA_MODEL_TYPES.has(model.config_model_type || '');
+
+                // Determine if compression is available (not for OCR or DSA models)
+                const compressionAvailable = !isOcr && !isDsa;
+
                 this.modelSettings = {
                     model_alias: settings.model_alias || '',
                     model_type_override: settings.model_type_override || '',
@@ -919,7 +929,18 @@
                     specprefill_keep_pct: settings.specprefill_keep_pct ? String(settings.specprefill_keep_pct) : '0.2',
                     specprefill_threshold: settings.specprefill_threshold || null,
                     ctKwargEntries,
+                    // Compression settings
+                    compression_enabled: !!(settings.compression_enabled),
+                    compression_am_ratio: settings.compression_am_ratio || 4.0,
+                    compression_available: compressionAvailable,
+                    compression_stats: null,
                 };
+
+                // Load compression status if available
+                if (compressionAvailable) {
+                    this.loadCompressionStatus();
+                }
+
                 this.showModelSettingsModal = true;
             },
 
@@ -991,6 +1012,9 @@
                                 specprefill_threshold: this.modelSettings.specprefill_enabled
                                     ? (this.modelSettings.specprefill_threshold || null)
                                     : null,
+                                // Compression settings
+                                compression_enabled: this.modelSettings.compression_enabled,
+                                compression_am_ratio: this.modelSettings.compression_am_ratio || 4.0,
                             };
                         })()),
                     });
@@ -1053,6 +1077,76 @@
                     alert(window.t('js.error.load_generation_config_failed'));
                 } finally {
                     this.loadingGenDefaults = false;
+                }
+            },
+
+            // Compression API methods
+            async loadCompressionStatus() {
+                if (!this.selectedModel) return;
+                try {
+                    const response = await fetch('/admin/api/compression/status');
+                    if (response.ok) {
+                        const data = await response.json();
+                        // Update compression stats in modelSettings
+                        this.modelSettings.compression_stats = {
+                            compression_ratio: data.compression_ratio || 0.0,
+                            avg_decompression_latency_ms: data.avg_decompression_latency_ms || 0.0,
+                            compression_success_count: data.compression_success_count || 0,
+                            compression_failure_count: data.compression_failure_count || 0,
+                            decompression_success_count: data.decompression_success_count || 0,
+                            decompression_failure_count: data.decompression_failure_count || 0,
+                        };
+                    }
+                } catch (err) {
+                    console.error('Failed to load compression status:', err);
+                }
+            },
+
+            async toggleCompression() {
+                if (!this.selectedModel || !this.modelSettings.compression_available) return;
+                try {
+                    const response = await fetch('/admin/api/compression/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            enabled: !this.modelSettings.compression_enabled,
+                            am_ratio: this.modelSettings.compression_am_ratio || 4.0
+                        }),
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.modelSettings.compression_enabled = !this.modelSettings.compression_enabled;
+                        // Reload stats to update counts
+                        await this.loadCompressionStatus();
+                    } else if (response.status === 401) {
+                        window.location.href = '/admin';
+                    } else {
+                        const data = await response.json();
+                        alert(data.detail || window.t('js.error.save_model_settings_failed'));
+                    }
+                } catch (err) {
+                    console.error('Failed to toggle compression:', err);
+                    alert(window.t('js.error.save_model_settings_failed'));
+                }
+            },
+
+            async updateCompressionAmRatio() {
+                if (!this.selectedModel || !this.modelSettings.compression_available) return;
+                try {
+                    const response = await fetch('/admin/api/compression/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            enabled: this.modelSettings.compression_enabled,
+                            am_ratio: this.modelSettings.compression_am_ratio
+                        }),
+                    });
+                    if (!response.ok && response.status !== 401) {
+                        const data = await response.json();
+                        alert(data.detail || window.t('js.error.save_model_settings_failed'));
+                    }
+                } catch (err) {
+                    console.error('Failed to update am_ratio:', err);
                 }
             },
 

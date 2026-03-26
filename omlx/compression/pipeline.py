@@ -146,6 +146,10 @@ class KVCachePipeline:
         compacted_seq_len = compacted.layers[0][0].shape[2]
         actual_ratio = original_seq_len / compacted_seq_len if compacted_seq_len > 0 else 1.0
 
+        # Record compression metric
+        from omlx.server_metrics import get_server_metrics
+        get_server_metrics().record_compression_ratio(actual_ratio)
+
         stripped_layers = self._strip_rope(compacted.layers)
         compressed_bytes = self._kvtc.compress(stripped_layers)
 

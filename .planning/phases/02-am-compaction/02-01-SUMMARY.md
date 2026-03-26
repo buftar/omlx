@@ -116,3 +116,11 @@ completed: 2026-03-19
 ---
 *Phase: 02-am-compaction*
 *Completed: 2026-03-19*
+
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/02-am-compaction/02-01-SUMMARY.md
+- FOUND: tests/test_am.py (398 lines, 21 tests)
+- FOUND: e756c9e (task commit — test scaffold + am.py stub)
+- FOUND: 0f634a1 (metadata commit — SUMMARY.md, STATE.md, ROADMAP.md)
+- VERIFIED: pytest exits 1 (20 failed, 1 passed — RED state)
