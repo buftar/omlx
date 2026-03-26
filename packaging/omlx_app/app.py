@@ -33,6 +33,7 @@ from AppKit import (
 )
 from Foundation import NSData, NSObject, NSRunLoop, NSDefaultRunLoopMode, NSTimer
 
+from .admin_dashboard import fetch_compression_dashboard
 from .config import ServerConfig
 from .server_manager import PortConflict, ServerManager, ServerStatus
 
@@ -660,6 +661,64 @@ class OMLXAppDelegate(NSObject):
 
         stats_item.setSubmenu_(stats_submenu)
         self.menu.addItem_(stats_item)
+
+        # --- Compression submenu ---
+        if is_running and self._admin_session:
+            base_url = f"http://127.0.0.1:{self.config.port}"
+            settings_items, stats_items = fetch_compression_dashboard(
+                self._admin_session, base_url
+            )
+
+            if settings_items or stats_items:
+                compress_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                    "Compression", None, ""
+                )
+                compress_icon = self._create_menu_icon("archivebox")
+                if compress_icon:
+                    compress_item.setImage_(compress_icon)
+
+                compress_submenu = NSMenu.alloc().init()
+
+                if settings_items:
+                    # Settings card header
+                    settings_header = (
+                        NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                            "── Settings ──", None, ""
+                        )
+                    )
+                    settings_header.setEnabled_(False)
+                    compress_submenu.addItem_(settings_header)
+
+                    for label, value in settings_items:
+                        text = f"{label}: {value}"
+                        mi = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                            text, "noOp:", ""
+                        )
+                        mi.setTarget_(self)
+                        compress_submenu.addItem_(mi)
+
+                if stats_items:
+                    # Stats card header
+                    if settings_items:
+                        compress_submenu.addItem_(NSMenuItem.separatorItem())
+                    stats_header = (
+                        NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                            "── Stats ──", None, ""
+                        )
+                    )
+                    stats_header.setEnabled_(False)
+                    compress_submenu.addItem_(stats_header)
+
+                    for label, value in stats_items:
+                        text = f"{label}: {value}"
+                        mi = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                            text, "noOp:", ""
+                        )
+                        mi.setTarget_(self)
+                        compress_submenu.addItem_(mi)
+
+                compress_item.setSubmenu_(compress_submenu)
+                self.menu.addItem_(compress_item)
 
         self.menu.addItem_(NSMenuItem.separatorItem())
 
