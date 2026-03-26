@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 11-tech-debt-cleanup-01-PLAN.md (Wave 0 Test Suite Cleanup)
-last_updated: "2026-03-26T06:44:31.519Z"
+stopped_at: Completed 11-tech-debt-cleanup-01-PLAN.md (Wave 0 test suite cleanup)
+last_updated: "2026-03-26T06:48:05.078Z"
 last_activity: 2026-03-25 — Phase 9 complete (OBS-04 docs + benchmark metrics + admin UI)
 progress:
   total_phases: 10
@@ -81,6 +81,7 @@ Progress: [███████████████████████
 | Phase 10-test-suite-fixes P01 | 5 | 2 tasks | 2 files |
 | Phase 11-tech-debt-cleanup P02 | 3 | 2 tasks | 2 files |
 | Phase 11-tech-debt-cleanup P01 | 2 | 3 tasks | 3 files |
+| Phase 11-tech-debt-cleanup P01 | 9 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,8 @@ Recent decisions affecting current work:
 - [Phase 11-tech-debt-cleanup]: admin_dashboard.py owns only API fetching/data shaping — no PyObjC, NSMenuItem construction stays in app.py
 - [Phase 11-tech-debt-cleanup]: Direct import of nnls_solve in tests bypasses diagnostics guard — correct pattern for unit-testing internal helpers without full pipeline
 - [Phase 11-tech-debt-cleanup]: pytest.importorskip used in TestCalibrationTiming as mlx_lm guard — avoids xfail while preserving skip semantics when deps unavailable
+- [Phase 11-tech-debt-cleanup]: CAL-05 xfail removal: pytest.importorskip replaces xfail+NotImplementedError -- run_calibration is fully implemented
+- [Phase 11-tech-debt-cleanup]: AM-02/AM-08 direct tests: import nnls_solve directly to bypass diagnostics=None guard in AMCompactor.compact()
 
 ### Pending Todos
 
@@ -161,6 +164,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-26T06:44:31.517Z
-Stopped at: Completed 11-tech-debt-cleanup-01-PLAN.md (Wave 0 Test Suite Cleanup)
+Last session: 2026-03-26T06:48:05.076Z
+Stopped at: Completed 11-tech-debt-cleanup-01-PLAN.md (Wave 0 test suite cleanup)
 Resume file: None

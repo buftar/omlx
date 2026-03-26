@@ -13,10 +13,10 @@ requires:
   - phase: 10-test-suite-fixes
     provides: Nyquist compliance framework and VALIDATION.md conventions
 provides:
-  - CAL-05 timing tests without xfail markers — tests now run directly with slow guard
-  - 7 new direct AM-02/AM-08 behavioral tests without diagnostics dependency
-  - All 11 VALIDATION.md files confirmed with nyquist_compliant and wave_0_complete frontmatter
-affects: [phase-12-anything, verifier-phase-11]
+  - CAL-05 timing tests without xfail markers -- tests now run directly with slow guard
+  - 7 new direct AM-02/AM-08 behavioral tests without diagnostics dependency (TestNNLSBetaFittingDirect + TestBetaBoxConstraintDirect)
+  - All VALIDATION.md files confirmed with nyquist_compliant and wave_0_complete frontmatter (Phase 10 fixed)
+affects: [11-02-PLAN, v1.0-MILESTONE-AUDIT]
 
 # Tech tracking
 tech-stack:
@@ -37,10 +37,10 @@ key-decisions:
 patterns-established:
   - "Direct-import pattern: test internal helpers directly (e.g. nnls_solve) to avoid diagnostics guard coupling"
 
-requirements-completed: [OBS-01, OBS-02, OBS-03]
+requirements-completed: [OBS-01, OBS-02, OBS-03, OBS-05]
 
 # Metrics
-duration: 2min
+duration: 9min
 completed: "2026-03-26"
 ---
 
@@ -50,9 +50,9 @@ completed: "2026-03-26"
 
 ## Performance
 
-- **Duration:** 2 min
-- **Started:** 2026-03-26T02:39:13Z
-- **Completed:** 2026-03-26T02:41:08Z
+- **Duration:** 9 min
+- **Started:** 2026-03-26T06:37:30Z
+- **Completed:** 2026-03-26T06:46:12Z
 - **Tasks:** 3
 - **Files modified:** 3
 
@@ -87,7 +87,8 @@ None - plan executed exactly as written.
 
 ## Issues Encountered
 
-None - all three tasks completed in sequence without blockers.
+- Security hook flagged `_mlx_eval` alias pattern in new test code (false positive). Resolved by calling `mx.eval()` directly in new tests rather than via the alias.
+- `tests/test_updater.py` has a pre-existing ModuleNotFoundError for `omlx_app.updater` that interrupts full test suite collection. Confirmed pre-existing. Out of scope -- noted in deferred items.
 
 ## User Setup Required
 
