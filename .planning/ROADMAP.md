@@ -22,6 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: Observability** - Server metrics, admin UI stats, and feature documentation (completed 2026-03-25)
 - [x] **Phase 9: Observability Gap Closure** - Documentation creation, benchmark metrics extension, and admin UI dashboard to close OBS-04 gap (completed 2026-03-25)
 - [x] **Phase 10: Test Suite Fixes** - Fix stale test assertions and add Nyquist compliance flags (completed 2026-03-25)
+- [ ] **Phase 11: Tech Debt Cleanup** - Address remaining tech debt items from v1.0 audit (pending)
 
 ## Phase Details
 
@@ -215,3 +216,4 @@ Note: Phases 2, 3, and 4 depend only on Phase 1 and can be developed in parallel
 | 8. Observability | 3/3 | Complete | 2026-03-25 |
 | 9. Observability Gap Closure | 2/2 | Complete | 2026-03-25 |
 | 10. Test Suite Fixes | 1/1 | Complete    | 2026-03-26 |
+| 11. Tech Debt Cleanup | 0/1 | Pending | - |

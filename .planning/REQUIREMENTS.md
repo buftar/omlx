@@ -71,6 +71,7 @@ Requirements for the KV cache compression milestone. Each maps to roadmap phases
 - [ ] **OBS-01**: Compression ratio, compaction ratio, and decompression latency are exposed as server metrics
 - [ ] **OBS-02**: Cache hit/miss rates post-compression are tracked and reported
 - [ ] **OBS-03**: Compression stats are visible in the omlx admin UI dashboard
+- [ ] **OBS-05**: Admin UI dashboard with compression settings and stats cards (Wave 1)
 - [x] **OBS-04**: Feature documentation covers architecture, configuration, and calibration workflow
 
 ## v2 Requirements
@@ -149,16 +150,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VAL-06 | Phase 7 | Complete |
 | VAL-07 | Phase 7 | Complete |
 | VAL-08 | Phase 7 | Complete |
-| OBS-01 | Phase 9 | Pending |
-| OBS-02 | Phase 9 | Pending |
-| OBS-03 | Phase 9 | Pending |
+| OBS-01 | Phase 11 | Pending |
+| OBS-02 | Phase 11 | Pending |
+| OBS-03 | Phase 11 | Pending |
 | OBS-04 | Phase 9 | Complete |
+| OBS-05 | Phase 11 | Pending |
 
 **Coverage:**
-- v1 requirements: 45 total
-- Mapped to phases: 45
+- v1 requirements: 46 total
+- Mapped to phases: 46
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-25 - OBS-01..OBS-04 moved to Phase 9 for gap closure*
+*Last updated: 2026-03-26 - OBS-01..OBS-05 moved to Phase 11 for tech debt cleanup*
