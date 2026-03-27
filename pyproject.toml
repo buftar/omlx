@@ -137,8 +137,3 @@ markers = [
     "slow: marks tests as slow -- require a real model download (deselect with '-m not slow')",
 ]
 
-[dependency-groups]
-dev = [
-    "pytest>=9.0.2",
-    "pytest-asyncio>=1.3.0",
-]

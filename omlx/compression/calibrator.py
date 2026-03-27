@@ -152,7 +152,7 @@ def compute_pca_basis(vectors, n_components, seed=42):
     centered = (sample - mu).astype(np.float32)
     data_mlx = mx.array(centered)
 
-    # Mandatory: use svd_f32 helper, not bare mx.linalg.svd
+    # Mandatory: use svd_f32 helper (see linalg_utils), not bare linalg calls
     U, S, Vt = svd_f32(data_mlx)
     _mx_materialize(Vt, S)
 
