@@ -113,3 +113,4 @@ omlx/admin/tailwindcss-*
 
 # GSD planning files (internal dev tooling)
 .planning/
+CLAUDE.md
